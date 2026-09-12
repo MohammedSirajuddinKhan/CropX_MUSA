@@ -1,0 +1,38 @@
+import { RiskHeader } from "@/components/cropx/RiskHeader";
+import { ScenarioSimulator } from "@/components/cropx/ScenarioSimulator";
+import { CompareTable } from "@/components/cropx/CompareTable";
+import { RiskDrivers } from "@/components/cropx/RiskDrivers";
+import { PlantingSignals } from "@/components/cropx/PlantingSignals";
+import { RecommendationPanel } from "@/components/cropx/RecommendationPanel";
+import { DataCoverage } from "@/components/cropx/DataCoverage";
+import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
+
+/**
+ * Main console screen — the Scenario Simulator is the product.
+ * Layout: risk header → simulator (hero) → comparison & drivers →
+ * signals → recommendation. Every panel below the simulator reacts to it.
+ */
+export default function ConsoleSimulator() {
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Region strip + horizon note */}
+      <RegionSwitcher />
+
+      <RiskHeader />
+
+      <ScenarioSimulator />
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <CompareTable />
+        <RiskDrivers />
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <PlantingSignals />
+        <RecommendationPanel />
+      </div>
+
+      <DataCoverage />
+    </div>
+  );
+}
