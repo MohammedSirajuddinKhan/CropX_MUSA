@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useLang } from "@/i18n";
-import { districtName } from "@/i18n/names";
 import { ThemeToggle, LanguageToggle } from "@/components/cropx/Controls";
 import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
@@ -15,7 +14,7 @@ const NAV = [
 export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { t, lang } = useLang();
+  const { t } = useLang();
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -98,9 +97,6 @@ export function AppSidebar() {
             <LogOut className="size-3" /> {t("nav.exit")}
           </button>
         </div>
-        <p className="mt-2 truncate font-mono text-[9.5px] text-muted-foreground/70">
-          {districtName("nashik", lang)} · {t("nav.monitorGroup")}
-        </p>
       </div>
     </aside>
   );

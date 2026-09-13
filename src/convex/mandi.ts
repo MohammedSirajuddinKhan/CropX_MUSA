@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 
 /**
  * Mandi quote storage + public queries backing the live MandiPrices panel.
@@ -52,6 +52,19 @@ export const logSync = internalMutation({
     for (const old of all.slice(30)) {
       await ctx.db.delete(old._id);
     }
+  },
+});
+
+/** Epoch ms of the most recent sync attempt (cooldown guard for ingest). */
+export const lastSyncAt = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("mandiSync")
+      .withIndex("by_at", (q) => q.gt("at", 0))
+      .order("desc")
+      .take(1);
+    return rows[0]?.at ?? 0;
   },
 });
 

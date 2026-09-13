@@ -260,6 +260,13 @@ export const hi: Partial<Dict> = {
   "mandi.missingKey":
     "Keys टैब में data.gov.in API कुंजी जोड़ें (env: DATA_GOV_IN_API_KEY) और कंसोल स्वतः लाइव AGMARKNET मूल्य ले लेगा।",
   "mandi.via": "data.gov.in द्वारा",
+  "mandi.loading": "डेटा फ़ीड से कनेक्ट हो रहा है…",
+  "mandi.error": "डेटा फ़ीड त्रुटि — स्वतः पुनः प्रयास",
+  "mandi.noDemo": "इस फसल के लिए कोई डेमो मूल्य नहीं — पहली इंजेस्ट के बाद लाइव AGMARKNET मूल्य दिखेंगे।",
+  "mandi.syncNow": "अभी सिंक करें",
+  "mandi.syncBusy": "सिंक हो रहा है…",
+  "mandi.syncFail": "सिंक विफल — DATA_GOV_IN_API_KEY जाँचें और पुनः प्रयास करें",
+  "switcher.allDistricts": "सभी {n} ज़िले",
 
   "band.low": "कम",
   "band.medium": "मध्यम",

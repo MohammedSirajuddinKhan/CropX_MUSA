@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 /**
@@ -14,11 +14,14 @@ import { internal } from "./_generated/api";
  *       &filters[commodity]=Onion
  *
  * Response: { records: [{ state, district, market, commodity, variety,
- * grade, min_price, max_price, modal_price, price_unit, arrival_date }] }
+ * grade, arrival_date, min_price, max_price, modal_price }] } — prices are
+ * delivered as JSON numbers in the current dataset shape.
  *
  * This is OFFICIAL, LIVE government data ( Directorate of Marketing &
  * Inspection, Ministry of Agriculture & Farmers Welfare). Requires an API
  * key from data.gov.in configured as env var DATA_GOV_IN_API_KEY.
+ * Verified against the live endpoint 2026-09-13 (sample: APMC Pune,
+ * Onion, modal ₹3,000/q, 13/09/2026).
  */
 
 const RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070";
@@ -53,19 +56,31 @@ interface AgmarknetRecord {
   district?: string;
   market?: string;
   commodity?: string;
-  min_price?: string;
-  max_price?: string;
-  modal_price?: string;
+  min_price?: string | number;
+  max_price?: string | number;
+  modal_price?: string | number;
   price_unit?: string;
   arrival_date?: string;
 }
 
-function toNum(v: string | undefined): number {
+/**
+ * AGMARKNET delivers prices as JSON numbers in the current dataset shape
+ * ("min_price": 3000) — accept both numbers and legacy strings defensively.
+ */
+function toNum(v: string | number | undefined): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
   const n = Number.parseFloat((v ?? "").replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) ? n : NaN;
 }
 
-export const ingest = internalAction({
+/**
+ * Public so the console's "sync now" button can populate the cache
+ * immediately after an API key is configured, instead of waiting for the
+ * 6-hour cron. The action only reads public government data and writes
+ * through internal mutations; repeated calls are idempotent per
+ * (crop, market, arrivalDate).
+ */
+export const ingest = action({
   args: {},
   returns: v.object({
     status: v.union(v.literal("ok"), v.literal("error"), v.literal("missing-key")),
@@ -73,6 +88,13 @@ export const ingest = internalAction({
     message: v.optional(v.string()),
   }),
   handler: async (ctx): Promise<{ status: "ok" | "error" | "missing-key"; recordCount: number; message?: string }> => {
+    // Cooldown: the action is public (shared with the console's sync button);
+    // refuse to hit data.gov.in more than once per 10 minutes.
+    const last = await ctx.runQuery(internal.mandi.lastSyncAt, {});
+    if (Date.now() - last < 10 * 60_000) {
+      return { status: "ok", recordCount: -1, message: "cooldown: last run < 10 min ago" };
+    }
+
     const apiKey = process.env.DATA_GOV_IN_API_KEY;
     if (!apiKey) {
       await ctx.runMutation(internal.mandi.logSync, {
@@ -91,7 +113,9 @@ export const ingest = internalAction({
       url.searchParams.set("api-key", apiKey);
       url.searchParams.set("format", "json");
       url.searchParams.set("limit", "100");
-      url.searchParams.set("filters[State]", "Maharashtra");
+      // NOTE: lowercase "state" — the dataset's filter key. "filters[State]"
+      // silently returns 0 records.
+      url.searchParams.set("filters[state]", "Maharashtra");
       url.searchParams.set("filters[commodity]", commodity);
 
       try {

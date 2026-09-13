@@ -138,7 +138,7 @@ export function RegionSwitcher() {
               : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
           )}
         >
-          {t("mon.colDistrict")} {regions.length}
+          {t("switcher.allDistricts", { n: regions.length })}
           <span aria-hidden className="text-[9px]">{open ? "▲" : "▼"}</span>
         </button>
         {open && (

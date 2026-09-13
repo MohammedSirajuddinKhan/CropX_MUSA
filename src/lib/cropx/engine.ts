@@ -57,7 +57,9 @@ function band(risk: number): RiskBand {
 }
 
 function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
+  // NaN-safe: a bad input degrades to the lower bound, never poisons the
+  // score chain with NaN (Math.min/max propagate NaN silently).
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo;
 }
 
 /** Guards engine inputs against bad/missing seed values (defensive). */
@@ -66,6 +68,12 @@ function sanitizeSeason(season: SeasonState): SeasonState {
     Number.isFinite(n) && n > 0 ? n : fallback;
   const pct = (n: number, fallback: number) =>
     Number.isFinite(n) ? clamp(n, -60, 60) : fallback;
+  const VALID_CONFIDENCE = ["low", "medium", "medium-high", "high"] as const;
+  const confidence = VALID_CONFIDENCE.includes(
+    season.signalConfidence as (typeof VALID_CONFIDENCE)[number],
+  )
+    ? season.signalConfidence
+    : "medium";
   return {
     ...season,
     plantingAreaHa: pos(season.plantingAreaHa, 1),
@@ -81,6 +89,7 @@ function sanitizeSeason(season: SeasonState): SeasonState {
     },
     weeksToHarvest: clamp(Math.round(season.weeksToHarvest) || 6, 1, 30),
     signalCoverage: clamp(season.signalCoverage || 0, 0, 100),
+    signalConfidence: confidence,
   };
 }
 

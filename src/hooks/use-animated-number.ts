@@ -6,21 +6,24 @@ import { useEffect, useRef, useState } from "react";
  * recalculation rather than a jarring swap.
  */
 export function useAnimatedNumber(target: number, durationMs = 380): number {
-  const [value, setValue] = useState(target);
-  const fromRef = useRef(target);
-  const valueRef = useRef(target);
+  // NaN guard: an upstream bad value renders as "NaN" through toFixed —
+  // degrade to 0 instead so readouts stay sane.
+  const safeTarget = Number.isFinite(target) ? target : 0;
+  const [value, setValue] = useState(safeTarget);
+  const fromRef = useRef(safeTarget);
+  const valueRef = useRef(safeTarget);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     fromRef.current = valueRef.current;
-    if (fromRef.current === target) return;
+    if (fromRef.current === safeTarget) return;
     const start = performance.now();
     const from = fromRef.current;
 
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / durationMs);
       const eased = 1 - Math.pow(1 - p, 3);
-      const next = from + (target - from) * eased;
+      const next = from + (safeTarget - from) * eased;
       valueRef.current = next;
       setValue(next);
       if (p < 1) {
@@ -32,7 +35,7 @@ export function useAnimatedNumber(target: number, durationMs = 380): number {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [target, durationMs]);
+  }, [safeTarget, durationMs]);
 
   return value;
 }
