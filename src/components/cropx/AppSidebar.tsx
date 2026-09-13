@@ -64,8 +64,9 @@ export function AppSidebar() {
         <div className="mt-4 px-4">
           <p className="font-mono-t">v1 scope</p>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Onion · Nashik + Maharashtra districts. Scenario simulator for FPOs —
-            additional crops &amp; regions ship with the ML backend.
+            Onion across 34 Maharashtra farming districts + taluka nodes.
+            Scenario simulator for FPOs — additional crops ship with the ML
+            backend.
           </p>
         </div>
       </nav>

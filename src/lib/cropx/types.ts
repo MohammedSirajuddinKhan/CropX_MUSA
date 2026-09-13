@@ -17,6 +17,21 @@
 export type RiskBand = "low" | "medium" | "high" | "critical";
 export type ConfidenceLabel = "low" | "medium" | "medium-high" | "high";
 
+export interface VillageStat {
+  /** Taluka / mandi-node name. */
+  name: string;
+  /** Major APMC market node for the district. */
+  mandi: boolean;
+  /** Estimated planting area around this node, ha. */
+  areaHa: number;
+  /** Share of district planting (0-1). */
+  share: number;
+  /** Planting deviation vs 5-yr baseline around this node, %. */
+  deviationPct: number;
+  /** Minutes since this node's latest signal batch. */
+  minutesAgo: number;
+}
+
 export interface Region {
   id: string;
   name: string;
@@ -27,6 +42,12 @@ export interface Region {
   lon: number;
   /** Approximate planted area, ha — drives map marker weight. */
   areaHa: number;
+  /** Taluka / mandi nodes monitored within the district. */
+  villages: VillageStat[];
+  /** Total reports in the simulated signal stream for this district. */
+  reportCount: number;
+  /** Seed provenance label, shown in the UI honesty notes. */
+  dataSource: string;
 }
 
 export interface Crop {
@@ -62,6 +83,10 @@ export interface SeasonState {
   /** 0-100 signal coverage (% of area covered by reports). */
   signalCoverage: number;
   signalConfidence: ConfidenceLabel;
+  /** Total reports backing the current planting estimate. */
+  reportCount: number;
+  /** Expected yield for the season, t/ha. */
+  yieldTPerHa: number;
 }
 
 export interface SignalSource {
@@ -118,6 +143,8 @@ export interface RiskAssessment {
   modelVersion: string;
   /** Label distinguishing live/simulated inputs. */
   signalSource: "simulated-fpo-stream";
+  /** Reports backing this assessment (flows from the signal stream). */
+  reportCount: number;
 }
 
 export interface ForecastPoint {

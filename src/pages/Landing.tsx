@@ -154,7 +154,7 @@ export default function Landing() {
               open the console →
             </Link>
             <span className="font-mono text-[10.5px] text-muted-foreground">
-              MUSA CodeX 2026 · problem CX0602 · prototype, simulated signal stream
+              MUSA CodeX 2026 · problem CX0602 · prototype, simulated signal stream · 34 monitored districts
             </span>
           </div>
         </section>
@@ -195,6 +195,10 @@ export default function Landing() {
                 <span className="text-right text-foreground">XGBoost + SHAP (v1: calibrated engine)</span>
               </li>
               <li className="flex justify-between gap-4 py-2">
+                <span className="text-muted-foreground">coverage</span>
+                <span className="text-right text-foreground">34 Maharashtra farming districts, taluka-level nodes</span>
+              </li>
+              <li className="flex justify-between gap-4 py-2">
                 <span className="text-muted-foreground">output</span>
                 <span className="text-right text-foreground">glut risk + uncertainty, per district</span>
               </li>
@@ -210,7 +214,7 @@ export default function Landing() {
         <footer className="border-t border-border py-6">
           <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10.5px] text-muted-foreground">
             <span>cropx · early-warning intelligence for regional crop oversupply</span>
-            <span>prototype — signals simulated · v1 scope: nashik onion</span>
+            <span>prototype — signals simulated · v1: onion, all Maharashtra farming districts</span>
           </div>
         </footer>
       </main>

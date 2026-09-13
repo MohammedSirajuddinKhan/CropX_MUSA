@@ -9,9 +9,9 @@ import { cropxApi } from "@/lib/cropx/data";
  * still come from the engine, the LLM only words the brief.
  */
 export function RecommendationPanel() {
-  const { scenario, baseline } = useConsole();
+  const { scenario, baseline, bundle } = useConsole();
   const risk = scenario.risk;
-  const rec = cropxApi.getRecommendation(risk);
+  const rec = cropxApi.getRecommendation(risk, bundle.region.name);
   const changed = scenario.risk.glutRisk !== baseline.risk.glutRisk;
 
   return (

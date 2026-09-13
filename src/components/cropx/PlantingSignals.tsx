@@ -16,7 +16,7 @@ const KIND_LABEL: Record<string, string> = {
  * additional reports during the demo and watch coverage/risk respond.
  */
 export function PlantingSignals() {
-  const { bundle, signalCount, injectSignals } = useConsole();
+  const { bundle, signalCount, injectedReports, injectSignals } = useConsole();
   const [pulse, setPulse] = useState(0);
   const season = bundle.season;
 
@@ -101,6 +101,7 @@ export function PlantingSignals() {
         ))}
         <span className="ml-auto font-mono text-[10px] text-muted-foreground">
           coverage {bundle.season.signalCoverage}%
+          {injectedReports > 0 && ` · +${injectedReports.toLocaleString("en-IN")} injected`}
         </span>
       </div>
     </Panel>
