@@ -265,6 +265,26 @@ export const mr: Partial<Dict> = {
   "mandi.noDemo": "या पिकासाठी डेमो भाव नाहीत — पहिल्या इन्जेस्टनंतर थेट AGMARKNET भाव दिसतील.",
   "mandi.syncNow": "आता सिंक करा",
   "mandi.syncBusy": "सिंक होत आहे…",
+
+  // --- weather (Open-Meteo) ---
+  "wx.title": "जिल्हा हवामान — थेट",
+  "wx.live": "थेट",
+  "wx.fallback": "फॉलबॅक",
+  "wx.rain30": "पाऊस · गेल्या 30 दिवस",
+  "wx.rain14": "पाऊस · पुढील 14 दिवस",
+  "wx.temp": "कमाल तापमान · पुढील 14 दिवस",
+  "wx.note":
+    "Open-Meteo (ICON/GFS मॉडेल) कडून 30 दिवसांची प्रत्यक्ष आणि 14 दिवसांची अंदाज श्रृंखला. इंजिनच्या पाऊस ड्रायव्हरला खिलाते.",
+  "wx.connecting": "हवामान फीडशी जोडत आहे…",
+
+  // --- LLM decision brief (Gemini) ---
+  "brief.title": "निर्णय सारांश",
+  "brief.meta": "तयार होत आहे…",
+  "brief.badge": "LLM",
+  "brief.loading": "सारांश लिहिले जात आहे…",
+  "brief.error": "सारांश सेवा उपलब्ध नाही — पॅनेल शिफारशी वापरत आहोत",
+  "brief.foot":
+    "आकडे जोखीम इंजिनमधून सत्यापित — LLM फक्त भाषा देते, अंदाज कधीच मोजत नाही.",
   "mandi.syncFail": "सिंक अयशस्वी — DATA_GOV_IN_API_KEY तपासा आणि पुन्हा प्रयत्न करा",
   "switcher.allDistricts": "सर्व {n} जिल्हे",
 
