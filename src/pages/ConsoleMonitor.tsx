@@ -13,8 +13,9 @@ import { Panel } from "@/components/cropx/Panel";
 import { StatusTag } from "@/components/cropx/StatusTag";
 import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
-import { runEngine } from "@/lib/cropx/engine";
-import { SEASON_STATES, CROPS } from "@/lib/cropx/dataset";
+import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
+import { formatT, formatHa } from "@/lib/cropx/format";
+import { cn } from "@/lib/utils";
 
 function ForecastTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
@@ -41,32 +42,35 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
 }
 
 /**
- * Risk Monitor — regional view: forecast split, district comparison table,
- * arrivals vs absorption chart, coverage strip.
+ * Risk Monitor — state-wide view: forecast split (scenario-aware), the full
+ * district risk grid, a sortable district table, and the coverage strip.
  */
 export default function ConsoleMonitor() {
-  const { bundle, regions } = useConsole();
+  const { bundle, scenario, baseline, districtRows, setRegion } = useConsole();
 
-  // Chart data: forecast with uncertainty band. The band renders as a stacked
-  // pair: invisible base at `lo`, spread = hi − lo painted on top.
-  const bandData = bundle.forecast.map((p) => ({
+  // Chart reacts to the active scenario: production scales the forecast line,
+  // absorption shift scales the capacity line. History stays untouched.
+  const pScale = baseline.risk.expectedProductionT > 0
+    ? scenario.risk.expectedProductionT / baseline.risk.expectedProductionT
+    : 1;
+  const cScale = baseline.risk.expectedArrivalsT > 0
+    ? 1 + scenario.capacityDeltaPct / 100
+    : 1;
+
+  const forecast = bundle.forecast;
+  const bandData = forecast.map((p) => ({
     week: p.label,
-    lo: p.forecastLoT ?? null,
-    spread: p.forecastLoT != null && p.forecastHiT != null ? p.forecastHiT - p.forecastLoT : null,
-    mid: p.forecastT ?? null,
+    lo: p.forecastLoT != null ? Math.round(p.forecastLoT * pScale) : null,
+    spread:
+      p.forecastLoT != null && p.forecastHiT != null
+        ? Math.round((p.forecastHiT - p.forecastLoT) * pScale)
+        : null,
+    mid: p.forecastT != null ? Math.round(p.forecastT * pScale) : null,
     arrivals: p.arrivalsT ?? null,
+    absorption: p.absorptionT != null ? Math.round(p.absorptionT * cScale) : null,
   }));
 
-  // District comparison rows.
-  const rows = regions
-    .map((r) => {
-      const season = SEASON_STATES[r.id];
-      const risk = season
-        ? runEngine({ regionId: r.id, crop: CROPS[0], season, signals: [] }).risk
-        : null;
-      return { region: r, risk };
-    })
-    .sort((a, b) => (b.risk?.glutRisk ?? 0) - (a.risk?.glutRisk ?? 0));
+  const rows = [...districtRows].sort((a, b) => b.risk.glutRisk - a.risk.glutRisk);
 
   return (
     <div className="flex flex-col gap-3">
@@ -75,7 +79,18 @@ export default function ConsoleMonitor() {
       {/* Forecast chart with uncertainty band */}
       <Panel
         title="Arrivals forecast"
-        meta="weekly tonnes · uncertainty band = confidence interval"
+        meta={`${bundle.region.name} · weekly tonnes · uncertainty band = confidence interval`}
+        right={
+          scenario.risk.glutRisk !== baseline.risk.glutRisk ? (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              scenario applied — forecast scaled{" "}
+              <span className="tabular-nums">
+                {pScale >= 1 ? "+" : "−"}
+                {Math.abs((pScale - 1) * 100).toFixed(0)}%
+              </span>
+            </span>
+          ) : undefined
+        }
       >
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -94,10 +109,8 @@ export default function ConsoleMonitor() {
                 tickLine={false}
                 tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
                 width={44}
-              />              <Tooltip
-                content={<ForecastTooltip />}
-                cursor={{ stroke: "var(--border)" }}
               />
+              <Tooltip content={<ForecastTooltip />} cursor={{ stroke: "var(--border)" }} />
               {/* Uncertainty band: invisible base at lo, spread painted above */}
               <Area
                 type="linear"
@@ -135,6 +148,16 @@ export default function ConsoleMonitor() {
                 dot={false}
                 connectNulls={false}
               />
+              <Area
+                type="linear"
+                dataKey="absorption"
+                stroke="var(--chart-3)"
+                strokeWidth={1.25}
+                strokeDasharray="2 3"
+                fill="none"
+                dot={false}
+                connectNulls={false}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -146,13 +169,19 @@ export default function ConsoleMonitor() {
             <span className="inline-block h-px w-4 border-t border-dashed border-chart-1" /> historical arrivals
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-4 bg-chart-2/15" /> 76–88% style uncertainty envelope
+            <span className="inline-block h-px w-4 border-t border-dotted border-chart-3" /> absorption capacity
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-4 bg-chart-2/15" /> confidence envelope
           </span>
         </div>
       </Panel>
 
-      {/* District risk table */}
-      <Panel title="District risk table" meta="onion · baseline">
+      {/* Full district risk grid */}
+      <DistrictRiskGrid />
+
+      {/* District risk table — all districts, sortable by risk (pre-sorted) */}
+      <Panel title="District risk table" meta={`onion · baseline · ${rows.length} districts`}>
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -161,32 +190,46 @@ export default function ConsoleMonitor() {
               <th className="py-1.5 px-2 text-right font-medium">Band</th>
               <th className="py-1.5 px-2 text-right font-medium">Planting</th>
               <th className="py-1.5 px-2 text-right font-medium">Gap</th>
+              <th className="py-1.5 px-2 text-right font-medium">Reports</th>
               <th className="py-1.5 pl-2 text-right font-medium">Coverage</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ region, risk }) => (
-              <tr key={region.id} className="border-b border-border/60 last:border-b-0">
-                <td className="py-1.5 pr-2 text-[12.5px] font-medium text-foreground">
-                  {region.name}
-                </td>
-                <td className="py-1.5 px-2 text-right font-mono text-[12.5px] font-semibold tabular-nums text-foreground">
-                  {risk ? `${risk.glutRisk}%` : "—"}
-                </td>
-                <td className="py-1.5 px-2 text-right">
-                  {risk ? <StatusTag band={risk.band} label={risk.band} /> : "—"}
-                </td>
-                <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                  {(region.areaHa / 1000).toFixed(0)}k ha
-                </td>
-                <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                  {risk ? `${Math.round(risk.oversupplyGapPct)}%` : "—"}
-                </td>
-                <td className="py-1.5 pl-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                  {SEASON_STATES[region.id]?.signalCoverage ?? "—"}%
-                </td>
-              </tr>
-            ))}
+            {rows.map(({ region, risk, season }) => {
+              const active = region.id === bundle.region.id;
+              return (
+                <tr
+                  key={region.id}
+                  onClick={() => setRegion(region.id)}
+                  className={cn(
+                    "cursor-pointer border-b border-border/60 last:border-b-0 transition-colors hover:bg-secondary/50",
+                    active && "bg-secondary/70",
+                  )}
+                >
+                  <td className="py-1.5 pr-2 text-[12.5px] font-medium text-foreground">
+                    {region.name}
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-[12.5px] font-semibold tabular-nums text-foreground">
+                    {risk.glutRisk}%
+                  </td>
+                  <td className="py-1.5 px-2 text-right">
+                    <StatusTag band={risk.band} label={risk.band} />
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                    {formatHa(season.plantingAreaHa)}
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                    {Math.round(risk.oversupplyGapPct)}%
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                    {season.reportCount.toLocaleString("en-IN")}
+                  </td>
+                  <td className="py-1.5 pl-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                    {season.signalCoverage}%
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </Panel>

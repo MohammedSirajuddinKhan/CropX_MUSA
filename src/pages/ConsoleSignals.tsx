@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useConsole } from "@/components/cropx/console-state";
 import { Panel } from "@/components/cropx/Panel";
+import { VillageTable } from "@/components/cropx/VillageTable";
 import { formatHa } from "@/lib/cropx/format";
 import { cn } from "@/lib/utils";
 
@@ -13,10 +14,18 @@ const KIND_LABEL: Record<string, string> = {
 
 /**
  * Signal Stream — full prototype feed. All rows simulated; the page keeps
- * that label visible and offers the demo injector.
+ * that label visible and offers the demo injector. Shows the merged stream
+ * (injected batches first), district signal quality, and per-node coverage.
  */
 export default function ConsoleSignals() {
-  const { bundle, signalCount, injectSignals, baseline, scenario } = useConsole();
+  const {
+    bundle,
+    signalCount,
+    injectedReports,
+    injectSignals,
+    baseline,
+    scenario,
+  } = useConsole();
   const [pulse, setPulse] = useState(0);
   const season = bundle.season;
 
@@ -34,15 +43,17 @@ export default function ConsoleSignals() {
         {/* Stream */}
         <Panel
           title="Signal stream"
-          meta="prototype · simulated FPO/farmer reports"
+          meta={`prototype · simulated FPO/farmer reports · ${bundle.region.name}`}
           right={
             <span className="font-mono text-[10px] text-muted-foreground">
               {signalCount.toLocaleString("en-IN")} reports
+              {injectedReports > 0 &&
+                ` · +${injectedReports.toLocaleString("en-IN")} injected`}
             </span>
           }
         >
           <ul key={pulse} className="ruled-rows max-h-[420px] overflow-y-auto">
-            {bundle.signals.slice(0, 12).map((sig) => (
+            {bundle.signals.slice(0, 14).map((sig) => (
               <li key={sig.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="shrink-0 border border-border bg-secondary px-1 py-px font-mono text-[9px] font-semibold text-muted-foreground">
@@ -74,6 +85,9 @@ export default function ConsoleSignals() {
                 +{n}
               </button>
             ))}
+            <span className="font-mono text-[10px] text-muted-foreground/80">
+              (bounded · max 500 per district)
+            </span>
           </div>
         </Panel>
 
@@ -87,7 +101,10 @@ export default function ConsoleSignals() {
                   {season.signalCoverage}%
                 </p>
                 <div className="mt-1.5 h-1.5 w-full bg-border/60">
-                  <div className="h-full bg-fresh" style={{ width: `${season.signalCoverage}%` }} />
+                  <div
+                    className="h-full bg-fresh"
+                    style={{ width: `${season.signalCoverage}%` }}
+                  />
                 </div>
               </div>
               <div className="mt-1 border-t border-border/60 pt-2.5">
@@ -97,10 +114,19 @@ export default function ConsoleSignals() {
                 </p>
               </div>
               <div>
+                <p className="font-mono-t">reports</p>
+                <p className="mt-0.5 font-mono text-[13px] font-medium tabular-nums text-foreground">
+                  {season.reportCount.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div>
                 <p className="font-mono-t">est. planting vs median</p>
                 <p className="mt-0.5 font-mono text-[13px] font-medium tabular-nums text-foreground">
                   {formatHa(season.plantingAreaHa)}{" "}
-                  <span className="text-risk-high">+{deviation.toFixed(1)}%</span>
+                  <span className={deviation >= 0 ? "text-risk-high" : "text-fresh"}>
+                    {deviation >= 0 ? "+" : "−"}
+                    {Math.abs(deviation).toFixed(1)}%
+                  </span>
                 </p>
               </div>
             </div>
@@ -133,6 +159,8 @@ export default function ConsoleSignals() {
               can shift confidence — the same effect a live stream has on the model.
             </p>
           </Panel>
+
+          <VillageTable />
         </div>
       </div>
     </div>

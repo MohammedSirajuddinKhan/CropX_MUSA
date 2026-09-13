@@ -6,6 +6,8 @@ import { PlantingSignals } from "@/components/cropx/PlantingSignals";
 import { RecommendationPanel } from "@/components/cropx/RecommendationPanel";
 import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
+import { VillageTable } from "@/components/cropx/VillageTable";
+import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
 
 /**
  * Main console screen — the Scenario Simulator is the product.
@@ -25,6 +27,12 @@ export default function ConsoleSimulator() {
       <div className="grid gap-3 xl:grid-cols-2">
         <CompareTable />
         <RiskDrivers />
+      </div>
+
+      {/* Village/taluka layer + state-wide context for the active district */}
+      <div className="grid gap-3 xl:grid-cols-2">
+        <VillageTable />
+        <DistrictRiskGrid compact />
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
