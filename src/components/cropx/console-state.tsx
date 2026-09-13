@@ -7,8 +7,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useConvex } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { cropxApi, MAX_STREAM_SIGNALS } from "@/lib/cropx/data";
-import { runEngine } from "@/lib/cropx/engine";
+import { runEngine, type WeatherInput } from "@/lib/cropx/engine";
 import type {
   Crop,
   RegionBundle,
@@ -92,6 +94,8 @@ interface ConsoleState {
   signalCount: number;
   injectedReports: number;
   streamSignals: Signal[];
+  /** Live Open-Meteo weather for the active district (null while loading). */
+  weather: WeatherInput | null;
   setPlantingDelta: (v: number) => void;
   setCapacityDelta: (v: number) => void;
   setRegion: (id: string) => void;
@@ -110,6 +114,37 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
   const [capacityDeltaPct, setCapacityDeltaPct] = useState(session.capacityDeltaPct);
   const [injectedReports, setInjectedReports] = useState(session.injectedReports);
   const [streamSignals, setStreamSignals] = useState<Signal[]>([]);
+  const [weather, setWeather] = useState<WeatherInput | null>(null);
+
+  // Live weather (Open-Meteo via Convex). Fetched imperatively — NOT via
+  // useQuery — so a backend hiccup degrades to the engine's static driver
+  // instead of throwing inside the render tree. One-shot per district;
+  // the cron refreshes the cached snapshot.
+  const convex = useConvex();
+  useEffect(() => {
+    let cancelled = false;
+    convex
+      .query(api.openmeteo.snapshot, { regionId })
+      .then((snap: unknown) => {
+        if (cancelled || !snap) return;
+        const s = snap as WeatherInput;
+        if (
+          typeof s.rainPast30dMm === "number" &&
+          typeof s.rainNext14dMm === "number" &&
+          typeof s.tempNext14dMeanC === "number" &&
+          typeof s.wetnessIndex === "number" &&
+          typeof s.source === "string"
+        ) {
+          setWeather(s);
+        }
+      })
+      .catch(() => {
+        /* offline → static driver fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [convex, regionId]);
 
   const setRegion = useCallback((id: string) => {
     if (!cropxApi.hasRegion(id)) return;
@@ -170,6 +205,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       crop: bundle.crop,
       season: bundle.season,
       signals,
+      weather: weather ?? undefined,
     };
 
     const baseline = runEngine(engineBase);
@@ -197,6 +233,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       signalCount: bundle.season.reportCount,
       injectedReports,
       streamSignals,
+      weather,
       setPlantingDelta,
       setCapacityDelta,
       setRegion,
@@ -210,6 +247,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     capacityDeltaPct,
     injectedReports,
     streamSignals,
+    weather,
     setPlantingDelta,
     setCapacityDelta,
     setRegion,

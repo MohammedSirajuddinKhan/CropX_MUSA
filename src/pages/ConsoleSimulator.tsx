@@ -1,4 +1,6 @@
 import { RiskHeader } from "@/components/cropx/RiskHeader";
+import { WeatherPanel } from "@/components/cropx/WeatherPanel";
+import { DecisionBrief } from "@/components/cropx/DecisionBrief";
 import { ScenarioSimulator } from "@/components/cropx/ScenarioSimulator";
 import { CompareTable } from "@/components/cropx/CompareTable";
 import { RiskDrivers } from "@/components/cropx/RiskDrivers";
@@ -37,14 +39,18 @@ export default function ConsoleSimulator() {
         <DistrictRiskGrid compact />
       </div>
 
-      {/* LIVE government mandi prices (AGMARKNET via data.gov.in) */}
-      <MandiPrices />
+      {/* LIVE government mandi prices (AGMARKNET via data.gov.in) + live
+          district weather (Open-Meteo) */}
+      <div className="grid gap-3 xl:grid-cols-2">
+        <MandiPrices />
+        <WeatherPanel />
+      </div>
 
       <CropProvenance />
 
       <div className="grid gap-3 xl:grid-cols-2">
         <PlantingSignals />
-        <RecommendationPanel />
+        <DecisionBrief />
       </div>
 
       <DataCoverage />

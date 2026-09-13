@@ -68,6 +68,49 @@ const schema = defineSchema(
       message: v.optional(v.string()),
       at: v.number(),
     }).index("by_at", ["at"]),
+
+    // Open-Meteo district weather snapshot (OFFICIAL live data, no key
+    // required). One row per district; overwritten by each ingest run.
+    // Values are REAL observed + forecast daily series summarized into
+    // risk-relevant indices used by the engine's weather driver.
+    weatherSnapshots: defineTable({
+      regionId: v.string(), // CropX district id (nashik, ...)
+      source: v.literal("open-meteo"),
+      /** Observed rainfall past 30 days, mm. */
+      rainPast30dMm: v.number(),
+      /** Forecast rainfall next 14 days, mm. */
+      rainNext14dMm: v.number(),
+      /** Forecast mean daily max temperature next 14 days, °C. */
+      tempNext14dMeanC: v.number(),
+      /** Simple wetness stress index 0-1 (drought 0 ↔ saturated 1). */
+      wetnessIndex: v.number(),
+      fetchedAt: v.number(),
+    }).index("by_region", ["regionId"]),
+
+    // Sync log for the weather ingest (drives the LIVE/OFFLINE badge).
+    weatherSync: defineTable({
+      status: v.union(v.literal("ok"), v.literal("error")),
+      recordCount: v.number(),
+      message: v.optional(v.string()),
+      at: v.number(),
+    }).index("by_at", ["at"]),
+
+    // Cached LLM decision briefs. THE NUMBERS COME FROM THE ENGINE — the
+    // brief stores them verbatim plus the LLM's wording; the UI renders
+    // both so the model can never silently alter the risk state.
+    briefs: defineTable({
+      regionId: v.string(),
+      cropId: v.string(),
+      lang: v.string(), // en | hi | mr
+      // Engine state fingerprint: cache key so a changed scenario
+      // regenerates instead of serving a stale brief.
+      fingerprint: v.string(),
+      headline: v.string(),
+      body: v.string(),
+      actions: v.array(v.string()),
+      model: v.string(), // e.g. gemini-2.0-flash
+      generatedAt: v.number(),
+    }).index("by_fp", ["fingerprint"]),
   },
   {
     schemaValidation: false,

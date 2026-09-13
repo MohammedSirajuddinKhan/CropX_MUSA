@@ -39,6 +39,23 @@ const CONFIDENCE_BY_LABEL = {
 /** Marginal-land elasticity: late-added area yields ~0.78× per hectare. */
 const AREA_ELASTICITY = 0.78;
 
+/**
+ * Live district weather (Open-Meteo, official model output). Optional: when
+ * absent the engine falls back to the static seasonal driver so the UI
+ * never depends on network availability.
+ */
+export interface WeatherInput {
+  source: string;
+  /** Observed rainfall past 30 days, mm. */
+  rainPast30dMm: number;
+  /** Forecast rainfall next 14 days, mm. */
+  rainNext14dMm: number;
+  /** Forecast mean daily max temperature next 14 days, °C. */
+  tempNext14dMeanC: number;
+  /** Wetness stress index 0–1 (0.5 neutral). */
+  wetnessIndex: number;
+}
+
 export interface EngineInput {
   regionId: string;
   crop: Crop;
@@ -47,6 +64,8 @@ export interface EngineInput {
   /** Scenario overrides applied on top of current season state. */
   plantingDeltaPct?: number;
   capacityDeltaPct?: number;
+  /** Live weather (Open-Meteo). Absent → static fallback driver. */
+  weather?: WeatherInput;
 }
 
 function band(risk: number): RiskBand {
@@ -197,11 +216,21 @@ export function runEngine(input: EngineInput): ScenarioResult {
     FEATURE_WEIGHTS.arrivals * 120 * (0.5 + oversupplyGapPct / 120),
     `gap ≈ ${oversupplyGapPct.toFixed(0)}% of absorption capacity`,
   );
+  // Weather driver: real Open-Meteo data when available. The contribution
+  // stays small (absorbed by the SHAP-style re-centering below, so the
+  // calibrated score is unchanged); the NOTE carries the live numbers.
+  const weather = input.weather;
+  const wetness =
+    weather && Number.isFinite(weather.wetnessIndex)
+      ? clamp(weather.wetnessIndex, 0, 1)
+      : null;
   pushDriver(
     "weather",
-    "Rainfall conditions",
-    season.signalCoverage >= 60 ? 5 : 3,
-    "post-monsoon receding; neutral to slight +",
+    weather ? "Rainfall & temperature" : "Rainfall conditions",
+    wetness !== null ? (wetness >= 0.7 ? 6 : wetness >= 0.3 ? 4 : 2) : season.signalCoverage >= 60 ? 5 : 3,
+    weather
+      ? `${weather.rainPast30dMm >= 0 ? weather.rainPast30dMm.toFixed(0) : "—"} mm past 30 d · ${weather.rainNext14dMm.toFixed(0)} mm next 14 d · ${weather.tempNext14dMeanC.toFixed(0)}°C mean max (${weather.source})`
+      : "post-monsoon receding; neutral to slight +",
   );
 
   // Re-center so contributions sum to the DISPLAYED score's deviation from

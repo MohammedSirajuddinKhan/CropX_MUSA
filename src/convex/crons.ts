@@ -11,4 +11,8 @@ crons.interval("agmarknet-ingest", { hours: 6 }, api.agmarknet.ingest, {
   force: false,
 });
 
+// Refresh Open-Meteo weather for all 34 districts every 6 hours (free API,
+// no key required; stay polite regardless).
+crons.interval("openmeteo-ingest", { hours: 6 }, api.openmeteo.ingest, {});
+
 export default crons;

@@ -288,6 +288,26 @@ export const en = {
   "mandi.noDemo": "No demo prices for this crop — live AGMARKNET values appear after the first ingest.",
   "mandi.syncNow": "sync now",
   "mandi.syncBusy": "syncing…",
+
+  // --- weather (Open-Meteo, official model output) ---
+  "wx.title": "District weather — live",
+  "wx.live": "LIVE",
+  "wx.fallback": "FALLBACK",
+  "wx.rain30": "Rain · past 30 d",
+  "wx.rain14": "Rain · next 14 d",
+  "wx.temp": "Max temp · next 14 d",
+  "wx.note":
+    "Observed 30 d + forecast 14 d from Open-Meteo (ICON/GFS model output). Feeds the engine's rainfall driver.",
+  "wx.connecting": "connecting to weather feed…",
+
+  // --- LLM decision brief (Gemini) ---
+  "brief.title": "Decision brief",
+  "brief.meta": "generating…",
+  "brief.badge": "LLM",
+  "brief.loading": "composing brief…",
+  "brief.error": "brief service unreachable — using panel recommendations",
+  "brief.foot":
+    "Numbers verified from the risk engine — the LLM words the brief, it never computes the forecast.",
   "mandi.syncFail": "sync failed — check DATA_GOV_IN_API_KEY and retry",
   "switcher.allDistricts": "all {n} districts",
 
