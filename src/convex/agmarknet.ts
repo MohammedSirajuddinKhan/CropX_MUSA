@@ -10,46 +10,71 @@ import { internal } from "./_generated/api";
  *
  *   GET https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070
  *       ?api-key=...&format=json&limit=...
- *       &filters[State]=Maharashtra
+ *       &filters[state]=Maharashtra      (lowercase "state" — verified)
  *       &filters[commodity]=Onion
  *
  * Response: { records: [{ state, district, market, commodity, variety,
  * grade, arrival_date, min_price, max_price, modal_price }] } — prices are
- * delivered as JSON numbers in the current dataset shape.
+ * delivered as JSON numbers in the current dataset shape (verified live
+ * 2026-09-13: APMC Pune, Onion, modal ₹3,000/q, 13/09/2026).
  *
- * This is OFFICIAL, LIVE government data ( Directorate of Marketing &
- * Inspection, Ministry of Agriculture & Farmers Welfare). Requires an API
- * key from data.gov.in configured as env var DATA_GOV_IN_API_KEY.
- * Verified against the live endpoint 2026-09-13 (sample: APMC Pune,
- * Onion, modal ₹3,000/q, 13/09/2026).
+ * This is OFFICIAL, LIVE government data (Directorate of Marketing &
+ * Inspection, Ministry of Agriculture & Farmers Welfare).
+ *
+ * KEY STRATEGY:
+ *  - DATA_GOV_IN_API_KEY (env) is used when configured — full limits.
+ *  - Otherwise the PUBLIC SAMPLE KEY published in the official data.gov.in
+ *    API documentation is used, capped at 10 records/request. This keeps
+ *    the feed live out of the box; the sync log records when it is active.
  */
 
 const RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070";
 const API_BASE = "https://api.data.gov.in/resource";
+const SAMPLE_API_KEY = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
 
-/** AGMARKNET commodity names → CropX crop ids. */
+/**
+ * AGMARKNET commodity names → CropX crop ids.
+ *
+ * STRICT + case-insensitive: a record is only stored when its own
+ * commodity name maps. Names here are the LIVE endpoint's actual spellings
+ * (verified 2026-09-13): "Green Chilli" (not "Chilli Green"), "Bitter
+ * gourd" (lowercase g), "Chilly Capsicum". Filter cross-hits like "Onion
+ * Green" / "Peas Wet" / "Chilli Dry" do NOT map and are skipped — they
+ * must not pollute the parent crop.
+ */
 const COMMODITY_MAP: Record<string, string> = {
-  Onion: "onion",
-  Tomato: "tomato",
-  Potato: "potato",
-  Brinjal: "brinjal",
-  Cabbage: "cabbage",
-  Cauliflower: "cauliflower",
-  "Bhindi(Ladies Finger)": "okra",
-  "Chilli Green": "green-chilli",
-  "Chilly Green": "green-chilli",
-  Garlic: "garlic",
-  "Green Peas": "green-peas",
-  "Peas Green": "green-peas",
-  "Bitter Gourd": "bitter-gourd",
-  "Bottle Gourd": "bottle-gourd",
-  Raddish: "radish",
-  Radish: "radish",
-  Carrot: "carrot",
-  "Capsicum": "capsicum",
+  onion: "onion",
+  "onion big": "onion",
+  tomato: "tomato",
+  potato: "potato",
+  brinjal: "brinjal",
+  cabbage: "cabbage",
+  cauliflower: "cauliflower",
+  "bhindi(ladies finger)": "okra",
+  "chilli green": "green-chilli",
+  "chilly green": "green-chilli",
+  "green chilli": "green-chilli",
+  garlic: "garlic",
+  "green peas": "green-peas",
+  "peas green": "green-peas",
+  "bitter gourd": "bitter-gourd",
+  "bottle gourd": "bottle-gourd",
+  raddish: "radish",
+  radish: "radish",
+  carrot: "carrot",
+  capsicum: "capsicum",
+  "chilly capsicum": "capsicum",
 };
 
+/** Case-insensitive strict lookup into COMMODITY_MAP. */
+function mapCommodity(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  return COMMODITY_MAP[name.trim().toLowerCase()];
+}
+
 const COMMODITIES = Object.keys(COMMODITY_MAP);
+/** Parallel fetch width — polite to the public API. */
+const FETCH_CHUNK = 4;
 
 interface AgmarknetRecord {
   state?: string;
@@ -73,89 +98,126 @@ function toNum(v: string | number | undefined): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/**
- * Public so the console's "sync now" button can populate the cache
- * immediately after an API key is configured, instead of waiting for the
- * 6-hour cron. The action only reads public government data and writes
- * through internal mutations; repeated calls are idempotent per
- * (crop, market, arrivalDate).
- */
 export const ingest = action({
-  args: {},
+  args: { force: v.optional(v.boolean()) },
   returns: v.object({
     status: v.union(v.literal("ok"), v.literal("error"), v.literal("missing-key")),
     recordCount: v.number(),
     message: v.optional(v.string()),
   }),
-  handler: async (ctx): Promise<{ status: "ok" | "error" | "missing-key"; recordCount: number; message?: string }> => {
-    // Cooldown: the action is public (shared with the console's sync button);
-    // refuse to hit data.gov.in more than once per 10 minutes.
-    const last = await ctx.runQuery(internal.mandi.lastSyncAt, {});
-    if (Date.now() - last < 10 * 60_000) {
-      return { status: "ok", recordCount: -1, message: "cooldown: last run < 10 min ago" };
+  handler: async (ctx, args): Promise<{ status: "ok" | "error" | "missing-key"; recordCount: number; message?: string }> => {
+    // Cooldown: only successful runs hold the 10-minute window — a failed
+    // run can be retried immediately (e.g. after fixing the API key).
+    // `force` bypasses it for the console's explicit sync button.
+    const last = await ctx.runQuery(internal.mandi.lastSync, {});
+    if (!args.force && last.status === "ok" && Date.now() - last.at < 10 * 60_000) {
+      return { status: "ok", recordCount: -1, message: "cooldown: last successful run < 10 min ago" };
     }
 
-    const apiKey = process.env.DATA_GOV_IN_API_KEY;
-    if (!apiKey) {
-      await ctx.runMutation(internal.mandi.logSync, {
-        status: "missing-key",
-        recordCount: 0,
-        message: "DATA_GOV_IN_API_KEY not configured",
+    const userKey = process.env.DATA_GOV_IN_API_KEY;
+    const usingSample = !userKey;
+    const apiKey = userKey ?? SAMPLE_API_KEY;
+    // The sample key is hard-capped at 10 records per request by data.gov.in.
+    const limit = usingSample ? 10 : 100;
+
+    interface Batch {
+      commodity: string;
+      records: AgmarknetRecord[];
+    }
+    const errors: string[] = [];
+    const batches: Batch[] = [];
+
+    for (let i = 0; i < COMMODITIES.length; i += FETCH_CHUNK) {
+      const chunk = COMMODITIES.slice(i, i + FETCH_CHUNK);
+      const settled = await Promise.allSettled(
+        chunk.map(async (commodity): Promise<Batch> => {
+          const url = new URL(`${API_BASE}/${RESOURCE_ID}`);
+          url.searchParams.set("api-key", apiKey);
+          url.searchParams.set("format", "json");
+          url.searchParams.set("limit", String(limit));
+          // NOTE: lowercase "state" — the dataset's filter key.
+          // "filters[State]" silently returns 0 records.
+          url.searchParams.set("filters[state]", "Maharashtra");
+          url.searchParams.set("filters[commodity]", commodity);
+          const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = (await res.json()) as { records?: AgmarknetRecord[] };
+          return {
+            commodity,
+            records: Array.isArray(json.records) ? json.records : [],
+          };
+        }),
+      );
+      settled.forEach((s, j) => {
+        if (s.status === "fulfilled") {
+          batches.push(s.value);
+        } else {
+          const reason = s.reason instanceof Error ? s.reason.message : String(s.reason);
+          errors.push(`${chunk[j]}: ${reason}`);
+        }
       });
-      return { status: "missing-key", recordCount: 0, message: "DATA_GOV_IN_API_KEY not configured" };
     }
 
     let stored = 0;
-    const errors: string[] = [];
-
-    for (const commodity of COMMODITIES) {
-      const url = new URL(`${API_BASE}/${RESOURCE_ID}`);
-      url.searchParams.set("api-key", apiKey);
-      url.searchParams.set("format", "json");
-      url.searchParams.set("limit", "100");
-      // NOTE: lowercase "state" — the dataset's filter key. "filters[State]"
-      // silently returns 0 records.
-      url.searchParams.set("filters[state]", "Maharashtra");
-      url.searchParams.set("filters[commodity]", commodity);
-
-      try {
-        const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
-        if (!res.ok) {
-          errors.push(`${commodity}: HTTP ${res.status}`);
+    let skipped = 0;
+    for (const batch of batches) {
+      for (const r of batch.records) {
+        // STRICT: only the record's own commodity name maps. No fallback to
+        // the requested name — that stored "Onion Green" under onion.
+        const cropId = mapCommodity(r.commodity);
+        const modal = toNum(r.modal_price);
+        if (!cropId) {
+          skipped += 1;
           continue;
         }
-        const json = (await res.json()) as { records?: AgmarknetRecord[] };
-        const records = Array.isArray(json.records) ? json.records : [];
-
-        for (const r of records) {
-          const cropId = COMMODITY_MAP[(r.commodity ?? "").trim()];
-          const modal = toNum(r.modal_price);
-          if (!cropId || !Number.isFinite(modal)) continue;
-          await ctx.runMutation(internal.mandi.upsertQuote, {
-            cropId,
-            commodityName: (r.commodity ?? "").trim(),
-            state: (r.state ?? "").trim(),
-            district: (r.district ?? "").trim(),
-            market: (r.market ?? "").trim(),
-            minPrice: toNum(r.min_price) || modal,
-            maxPrice: toNum(r.max_price) || modal,
-            modalPrice: modal,
-            priceUnit: (r.price_unit ?? "Rs./Quintal").trim(),
-            arrivalDate: (r.arrival_date ?? "").trim(),
-          });
-          stored += 1;
+        if (!Number.isFinite(modal)) {
+          skipped += 1;
+          continue;
         }
-      } catch (err) {
-        errors.push(`${commodity}: ${err instanceof Error ? err.message : String(err)}`);
+        await ctx.runMutation(internal.mandi.upsertQuote, {
+          cropId,
+          commodityName: (r.commodity ?? batch.commodity).trim(),
+          state: (r.state ?? "Maharashtra").trim(),
+          district: (r.district ?? "").trim(),
+          market: (r.market ?? "").trim(),
+          minPrice: toNum(r.min_price) || modal,
+          maxPrice: toNum(r.max_price) || modal,
+          modalPrice: modal,
+          priceUnit: (r.price_unit ?? "Rs./Quintal").trim(),
+          arrivalDate: (r.arrival_date ?? "").trim(),
+        });
+        stored += 1;
       }
     }
 
     const status = stored > 0 ? "ok" : "error";
+    const message = [
+      usingSample
+        ? "live via public sample key (10 records/request) — set DATA_GOV_IN_API_KEY for full coverage"
+        : undefined,
+      skipped > 0 ? `${skipped} records skipped (non-bulb varieties / malformed prices)` : undefined,
+      errors.length > 0 ? errors.slice(0, 5).join("; ") : undefined,
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined;
+
+    // Self-heal: purge cached rows whose commodity name is no longer in the
+    // strict map (removes e.g. the mis-mapped "Onion Green" row).
+    const purged = await ctx.runMutation(internal.mandi.purgeUnknownCommodities, {
+      validNames: Object.keys(COMMODITY_MAP).map((k) =>
+        // Store display-cased originals for the purge set: compare
+        // case-insensitively inside the mutation instead.
+        k,
+      ),
+    });
+
     await ctx.runMutation(internal.mandi.logSync, {
       status,
       recordCount: stored,
-      message: errors.length > 0 ? errors.slice(0, 5).join("; ") : undefined,
+      message: [message, purged > 0 ? `${purged} stale rows purged` : undefined]
+        .filter(Boolean)
+        .join(" · ") || undefined,
     });
-    return { status, recordCount: stored, message: errors.length > 0 ? errors.slice(0, 5).join("; ") : undefined };
+    return { status, recordCount: stored, message };
   },
 });

@@ -7,6 +7,8 @@ const crons = cronJobs();
 // a 6 h cadence catches the morning upload without hammering the API).
 // The ingest is a public action (the console's "sync now" button shares it);
 // a built-in cooldown protects the government API from over-calling.
-crons.interval("agmarknet-ingest", { hours: 6 }, api.agmarknet.ingest);
+crons.interval("agmarknet-ingest", { hours: 6 }, api.agmarknet.ingest, {
+  force: false,
+});
 
 export default crons;
