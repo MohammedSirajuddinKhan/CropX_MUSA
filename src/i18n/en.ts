@@ -283,6 +283,13 @@ export const en = {
   "mandi.missingKey":
     "Add a data.gov.in API key in the Keys tab (env: DATA_GOV_IN_API_KEY) and the console ingests live AGMARKNET prices automatically.",
   "mandi.via": "via data.gov.in",
+  "mandi.loading": "connecting to data feed…",
+  "mandi.error": "data feed error — auto-retrying",
+  "mandi.noDemo": "No demo prices for this crop — live AGMARKNET values appear after the first ingest.",
+  "mandi.syncNow": "sync now",
+  "mandi.syncBusy": "syncing…",
+  "mandi.syncFail": "sync failed — check DATA_GOV_IN_API_KEY and retry",
+  "switcher.allDistricts": "all {n} districts",
 
   // --- bands, sources ---
   "band.low": "low",

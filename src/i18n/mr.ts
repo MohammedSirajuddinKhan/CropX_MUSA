@@ -260,6 +260,13 @@ export const mr: Partial<Dict> = {
   "mandi.missingKey":
     "Keys टॅबमध्ये data.gov.in API की जोडा (env: DATA_GOV_IN_API_KEY) आणि कन्सोल स्वयंचलितपणे थेट AGMARKNET भाव घेईल.",
   "mandi.via": "data.gov.in मार्फत",
+  "mandi.loading": "डेटा फीडशी जोडत आहोत…",
+  "mandi.error": "डेटा फीड त्रुटी — स्वयंचलित पुन्हा प्रयत्न",
+  "mandi.noDemo": "या पिकासाठी डेमो भाव नाहीत — पहिल्या इन्जेस्टनंतर थेट AGMARKNET भाव दिसतील.",
+  "mandi.syncNow": "आता सिंक करा",
+  "mandi.syncBusy": "सिंक होत आहे…",
+  "mandi.syncFail": "सिंक अयशस्वी — DATA_GOV_IN_API_KEY तपासा आणि पुन्हा प्रयत्न करा",
+  "switcher.allDistricts": "सर्व {n} जिल्हे",
 
   "band.low": "कमी",
   "band.medium": "मध्यम",

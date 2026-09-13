@@ -1,12 +1,16 @@
 /** Formatting helpers for CropX UI. Pure functions only. */
 
+const DASH = "—";
+
 export function formatT(t: number): string {
+  if (!Number.isFinite(t)) return DASH;
   if (t >= 1_000_000) return `${(t / 1_000_000).toFixed(2)}M t`;
   if (t >= 1_000) return `${Math.round(t / 1_000)}k t`;
   return `${Math.round(t)} t`;
 }
 
 export function formatHa(ha: number): string {
+  if (!Number.isFinite(ha)) return DASH;
   if (ha >= 100_000) return `${(ha / 100_000).toFixed(0)}k ha`;
   if (ha >= 1_000) return `${(ha / 1_000).toFixed(1)}k ha`;
   return `${Math.round(ha)} ha`;

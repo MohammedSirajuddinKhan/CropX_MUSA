@@ -1,10 +1,13 @@
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
 import { useLang } from "@/i18n";
 import { districtName } from "@/i18n/names";
 import { cn } from "@/lib/utils";
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
+import { RefreshCw } from "lucide-react";
 
 /**
  * Mandi prices — LIVE official data from AGMARKNET (data.gov.in), cached in
@@ -39,16 +42,35 @@ const LOCALE: Record<string, string> = { en: "en-IN", hi: "hi-IN", mr: "mr-IN" }
 export function MandiPrices() {
   const { crop } = useConsole();
   const { t, lang } = useLang();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(false);
+  const runIngest = useAction(api.agmarknet.ingest);
 
+  // useQuery returns `undefined` while the subscription loads — render an
+  // explicit connecting state instead of crashing on a missing field.
   const feed = useQuery(api.mandi.latestQuotes, { cropId: crop.id, limit: 10 });
   const sync = useQuery(api.mandi.syncStatus, {});
 
-  const hasLive = !!feed && feed.quotes.length > 0;
-  const live = hasLive && sync?.status === "ok";
-  const state = live ? "live" : sync?.status === "ok" ? "stale" : "demo";
+  if (feed === undefined || sync === undefined) {
+    return (
+      <Panel title={t("mandi.title")} meta={t("mandi.meta")}>
+        <p className="py-4 text-center font-mono text-[11px] text-muted-foreground">
+          {t("mandi.loading")}
+        </p>
+      </Panel>
+    );
+  }
+
+  const hasLive = feed.quotes.length > 0;
+  const live = hasLive && sync.status === "ok";
+  const state: "live" | "stale" | "demo" = live
+    ? "live"
+    : sync.status === "ok"
+      ? "stale"
+      : "demo";
 
   const updatedLabel = hasLive
-    ? new Date(feed.fetchedAt).toLocaleString(LOCALE[lang] ?? "en-IN", {
+    ? new Date(feed.fetchedAt || Date.now()).toLocaleString(LOCALE[lang] ?? "en-IN", {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -56,17 +78,18 @@ export function MandiPrices() {
       })
     : "—";
 
+  const demoForCrop = DEMO_QUOTES[crop.id] ?? [];
   const rows = hasLive
     ? feed.quotes.map((q) => ({
         key: q._id,
-        market: q.market,
-        district: q.district,
+        market: q.market || "—",
+        district: districtName(districtSlug(q.district), lang),
         modal: q.modalPrice,
         min: q.minPrice,
         max: q.maxPrice,
-        date: q.arrivalDate,
+        date: q.arrivalDate || "—",
       }))
-    : (DEMO_QUOTES[crop.id] ?? DEMO_QUOTES.onion).map((d, i) => ({
+    : demoForCrop.map((d, i) => ({
         key: `demo-${i}`,
         market: d.market,
         district: districtName(d.district, lang),
@@ -76,7 +99,20 @@ export function MandiPrices() {
         date: "—",
       }));
 
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncError(false);
+    try {
+      await runIngest({});
+    } catch {
+      setSyncError(true);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
+    <PanelErrorBoundary label={t("mandi.title")}>
     <Panel
       title={t("mandi.title")}
       meta={t("mandi.meta")}
@@ -104,9 +140,25 @@ export function MandiPrices() {
     >
       {!hasLive && (
         <p className="mb-2 border border-dashed border-border bg-secondary/40 px-2.5 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">
-          {t("mandi.missingKey")}
+          {demoForCrop.length > 0 ? t("mandi.missingKey") : t("mandi.noDemo")}{" "}
+          <button
+            type="button"
+            onClick={() => void handleSync()}
+            disabled={syncing}
+            className="ml-1 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+          >
+            {syncing ? t("mandi.syncBusy") : t("mandi.syncNow")}
+          </button>
         </p>
       )}
+      {syncError && (
+        <p className="mb-2 font-mono text-[10px] text-risk-critical">{t("mandi.syncFail")}</p>
+      )}
+      {rows.length === 0 ? (
+        <p className="py-3 text-center font-mono text-[11px] text-muted-foreground">
+          {t("mandi.noDemo")}
+        </p>
+      ) : (
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -141,11 +193,32 @@ export function MandiPrices() {
           ))}
         </tbody>
       </table>
-      <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-        {hasLive
-          ? `${t("mandi.updated", { when: updatedLabel })} · ${t("mandi.via")}`
-          : t("mandi.demoNote")}
-      </p>
+      )}
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+          {hasLive
+            ? `${t("mandi.updated", { when: updatedLabel })} · ${t("mandi.via")}`
+            : demoForCrop.length > 0
+              ? t("mandi.demoNote")
+              : t("mandi.noDemo")}
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleSync()}
+          disabled={syncing}
+          className="flex shrink-0 items-center gap-1.5 border border-border bg-secondary px-2 py-1 font-mono text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+          title={t("mandi.syncNow")}
+        >
+          <RefreshCw className={cn("size-3", syncing && "animate-spin")} />
+          {syncing ? t("mandi.syncBusy") : t("mandi.syncNow")}
+        </button>
+      </div>
     </Panel>
+    </PanelErrorBoundary>
   );
+}
+
+/** Map AGMARKNET district strings (e.g. "Nashik") to district ids. */
+function districtSlug(district: string): string {
+  return district.trim().toLowerCase().replace(/\s+/g, "-");
 }
