@@ -2,6 +2,7 @@ import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
 import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { formatT, formatHa } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 function AnimatedCell({ value, format }: { value: number; format: (n: number) => string }) {
@@ -44,6 +45,7 @@ function DeltaCell({
  */
 export function CompareTable() {
   const { baseline, scenario, effectiveSeason } = useConsole();
+  const { t } = useLang();
   const b = baseline.risk;
   const s = scenario.risk;
   const plantingDeltaPct = scenario.plantingDeltaPct;
@@ -57,7 +59,7 @@ export function CompareTable() {
     fmt: (n: number) => string;
   }[] = [
     {
-      label: "Planting area",
+      label: t("cmp.plantingArea"),
       baselineNode: <span>{formatHa(effectiveSeason.baselineAreaHa)}</span>,
       scenarioNode: (
         <AnimatedCell
@@ -69,28 +71,28 @@ export function CompareTable() {
       fmt: formatHa,
     },
     {
-      label: "Expected production",
+      label: t("cmp.expectedProduction"),
       baselineNode: <AnimatedCell value={b.expectedProductionT} format={formatT} />,
       scenarioNode: <AnimatedCell value={s.expectedProductionT} format={formatT} />,
       delta: s.expectedProductionT - b.expectedProductionT,
       fmt: formatT,
     },
     {
-      label: "Expected arrivals",
+      label: t("cmp.expectedArrivals"),
       baselineNode: <AnimatedCell value={b.expectedArrivalsT} format={formatT} />,
       scenarioNode: <AnimatedCell value={s.expectedArrivalsT} format={formatT} />,
       delta: s.expectedArrivalsT - b.expectedArrivalsT,
       fmt: formatT,
     },
     {
-      label: "Oversupply gap",
+      label: t("cmp.oversupplyGap"),
       baselineNode: <AnimatedCell value={b.oversupplyGapT} format={formatT} />,
       scenarioNode: <AnimatedCell value={s.oversupplyGapT} format={formatT} />,
       delta: s.oversupplyGapT - b.oversupplyGapT,
       fmt: formatT,
     },
     {
-      label: "Glut risk",
+      label: t("cmp.glutRisk"),
       baselineNode: <span>{b.glutRisk}%</span>,
       scenarioNode: (
         <AnimatedCell value={s.glutRisk} format={(n) => `${Math.round(n)}%`} />
@@ -102,37 +104,37 @@ export function CompareTable() {
 
   return (
     <Panel
-      title="Baseline → Scenario"
-      meta="digital twin · what changes"
+      title={t("cmp.title")}
+      meta={t("cmp.meta")}
       right={
         <span className="font-mono text-[10px] text-muted-foreground">
           {plantingDeltaPct === 0 && capacityDeltaPct === 0
-            ? "no scenario applied"
-            : `planting ${plantingDeltaPct > 0 ? "+" : ""}${plantingDeltaPct}% · absorption ${capacityDeltaPct > 0 ? "+" : ""}${capacityDeltaPct}%`}
+            ? t("cmp.noScenario")
+            : t("cmp.applied", { p: `${plantingDeltaPct > 0 ? "+" : ""}${plantingDeltaPct}`, c: `${capacityDeltaPct > 0 ? "+" : ""}${capacityDeltaPct}` })}
         </span>
       }
     >
       <table className="w-full border-collapse text-[12.5px]">
         <thead>
           <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            <th className="py-1.5 pr-2 font-medium">Metric</th>
-            <th className="py-1.5 px-2 text-right font-medium">Baseline</th>
-            <th className="py-1.5 px-2 text-right font-medium">Scenario</th>
+            <th className="py-1.5 pr-2 font-medium">{t("cmp.metric")}</th>
+            <th className="py-1.5 px-2 text-right font-medium">{t("cmp.baseline")}</th>
+            <th className="py-1.5 px-2 text-right font-medium">{t("cmp.scenario")}</th>
             <th className="py-1.5 pl-2 text-right font-medium">Δ</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.label} className="border-b border-border/60 last:border-b-0">
-              <td className="py-1.5 pr-2 text-[12px] text-secondary-foreground">{r.label}</td>
+          {rows.map((row) => (
+            <tr key={row.label} className="border-b border-border/60 last:border-b-0">
+              <td className="py-1.5 pr-2 text-[12px] text-secondary-foreground">{row.label}</td>
               <td className="py-1.5 px-2 text-right font-mono text-[12px] tabular-nums text-muted-foreground">
-                {r.baselineNode}
+                {row.baselineNode}
               </td>
               <td className="py-1.5 px-2 text-right font-mono text-[12.5px] font-medium tabular-nums text-foreground">
-                {r.scenarioNode}
-            </td>
+                {row.scenarioNode}
+              </td>
               <td className="py-1.5 pl-2 text-right">
-                <DeltaCell delta={r.delta} fmt={r.fmt} />
+                <DeltaCell delta={row.delta} fmt={row.fmt} />
               </td>
             </tr>
           ))}

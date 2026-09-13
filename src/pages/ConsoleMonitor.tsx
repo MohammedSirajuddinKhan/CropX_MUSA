@@ -14,10 +14,14 @@ import { StatusTag } from "@/components/cropx/StatusTag";
 import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
-import { formatT, formatHa } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
+import { bandLabelT } from "@/components/cropx/labels";
+import { formatHa } from "@/lib/cropx/format";
 import { cn } from "@/lib/utils";
 
 function ForecastTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  const { t } = useLang();
   if (!active || !payload?.length) return null;
   const row = payload.find((p) => p.dataKey === "mid");
   const arr = payload.find((p) => p.dataKey === "arrivals");
@@ -29,12 +33,12 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
       {row && (
         <p className="tabular-nums">
-          forecast · {Number(row.value).toLocaleString()} t
+          {t("mon.tooltipForecast", { n: Number(row.value).toLocaleString() })}
         </p>
       )}
       {arr && (
         <p className="tabular-nums text-muted-foreground">
-          arrivals · {Number(arr.value).toLocaleString()} t
+          {t("mon.tooltipArrivals", { n: Number(arr.value).toLocaleString() })}
         </p>
       )}
     </div>
@@ -47,6 +51,7 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
  */
 export default function ConsoleMonitor() {
   const { bundle, scenario, baseline, districtRows, setRegion, crop } = useConsole();
+  const { t, lang } = useLang();
 
   // Chart reacts to the active scenario: production scales the forecast line,
   // absorption shift scales the capacity line. History stays untouched.
@@ -78,16 +83,17 @@ export default function ConsoleMonitor() {
 
       {/* Forecast chart with uncertainty band */}
       <Panel
-        title="Arrivals forecast"
-        meta={`${bundle.region.name} · ${crop.name.toLowerCase()} · weekly tonnes · uncertainty band = confidence interval`}
+        title={t("mon.forecastTitle")}
+        meta={t("mon.forecastMeta", {
+          region: districtName(bundle.region.id, lang),
+          crop: cropName(crop.id, lang),
+        })}
         right={
           scenario.risk.glutRisk !== baseline.risk.glutRisk ? (
             <span className="font-mono text-[10px] text-muted-foreground">
-              scenario applied — forecast scaled{" "}
-              <span className="tabular-nums">
-                {pScale >= 1 ? "+" : "−"}
-                {Math.abs((pScale - 1) * 100).toFixed(0)}%
-              </span>
+              {t("mon.scenarioApplied", {
+                d: `${pScale >= 1 ? "+" : "−"}${Math.abs((pScale - 1) * 100).toFixed(0)}`,
+              })}
             </span>
           ) : undefined
         }
@@ -163,16 +169,16 @@ export default function ConsoleMonitor() {
         </div>
         <div className="mt-1 flex flex-wrap gap-4 font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-px w-4 bg-chart-2" /> forecast (next 8 wks)
+            <span className="inline-block h-px w-4 bg-chart-2" /> {t("mon.legendForecast")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-px w-4 border-t border-dashed border-chart-1" /> historical arrivals
+            <span className="inline-block h-px w-4 border-t border-dashed border-chart-1" /> {t("mon.legendHistorical")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-px w-4 border-t border-dotted border-chart-3" /> absorption capacity
+            <span className="inline-block h-px w-4 border-t border-dotted border-chart-3" /> {t("mon.legendAbsorption")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-4 bg-chart-2/15" /> confidence envelope
+            <span className="inline-block h-2.5 w-4 bg-chart-2/15" /> {t("mon.legendEnvelope")}
           </span>
         </div>
       </Panel>
@@ -182,19 +188,19 @@ export default function ConsoleMonitor() {
 
       {/* District risk table — all districts, sortable by risk (pre-sorted) */}
       <Panel
-        title="District risk table"
-        meta={`${crop.name.toLowerCase()} · baseline · ${rows.length} districts`}
+        title={t("mon.tableTitle")}
+        meta={t("mon.tableMeta", { crop: cropName(crop.id, lang), n: rows.length })}
       >
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              <th className="py-1.5 pr-2 font-medium">District</th>
-              <th className="py-1.5 px-2 text-right font-medium">Glut risk</th>
-              <th className="py-1.5 px-2 text-right font-medium">Band</th>
-              <th className="py-1.5 px-2 text-right font-medium">Planting</th>
-              <th className="py-1.5 px-2 text-right font-medium">Gap</th>
-              <th className="py-1.5 px-2 text-right font-medium">Reports</th>
-              <th className="py-1.5 pl-2 text-right font-medium">Coverage</th>
+              <th className="py-1.5 pr-2 font-medium">{t("mon.colDistrict")}</th>
+              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colGlutRisk")}</th>
+              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colBand")}</th>
+              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colPlanting")}</th>
+              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colGap")}</th>
+              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colReports")}</th>
+              <th className="py-1.5 pl-2 text-right font-medium">{t("mon.colCoverage")}</th>
             </tr>
           </thead>
           <tbody>
@@ -210,13 +216,13 @@ export default function ConsoleMonitor() {
                   )}
                 >
                   <td className="py-1.5 pr-2 text-[12.5px] font-medium text-foreground">
-                    {region.name}
+                    {districtName(region.id, lang)}
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-[12.5px] font-semibold tabular-nums text-foreground">
                     {risk.glutRisk}%
                   </td>
                   <td className="py-1.5 px-2 text-right">
-                    <StatusTag band={risk.band} label={risk.band} />
+                    <StatusTag band={risk.band} label={bandLabelT(t, risk.band)} />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
                     {formatHa(season.plantingAreaHa)}

@@ -2,23 +2,37 @@ import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
 import { StatusTag } from "./StatusTag";
 import { cropxApi } from "@/lib/cropx/data";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
+import { bandLabelT } from "./labels";
 
 /**
  * CropX recommendation — generated from the current scenario risk state.
  * In production this is where the LLM's decision brief renders; numbers
- * still come from the engine, the LLM only words the brief.
+ * still come from the engine, the LLM only words the brief. The brief body
+ * stays English in v1 (it is generated content, not chrome); panel labels
+ * follow the active language.
  */
 export function RecommendationPanel() {
   const { scenario, baseline, bundle } = useConsole();
+  const { t, lang } = useLang();
   const risk = scenario.risk;
+  const regionName = districtName(bundle.region.id, lang);
+  const cropNameL = cropName(bundle.crop.id, lang);
   const rec = cropxApi.getRecommendation(risk, bundle.region.name, bundle.crop.name);
   const changed = scenario.risk.glutRisk !== baseline.risk.glutRisk;
+  const audienceLabel =
+    rec.audience === "FPO"
+      ? t("rec.audience.FPO")
+      : rec.audience === "FPO + buyers"
+        ? t("rec.audience.fpoBuyers")
+        : t("rec.audience.all");
 
   return (
     <Panel
-      title="CropX recommendation"
-      meta={changed ? "reflects active scenario" : "baseline state"}
-      right={<StatusTag band={risk.band} label={`priority: ${rec.priority}`} />}
+      title={t("rec.title")}
+      meta={changed ? t("rec.reflectsScenario") : t("rec.baselineState")}
+      right={<StatusTag band={risk.band} label={bandLabelT(t, risk.band)} />}
     >
       <p className="text-[13.5px] font-medium leading-snug text-foreground">
         {rec.headline}
@@ -39,8 +53,10 @@ export function RecommendationPanel() {
       </ul>
 
       <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 font-mono text-[10px] text-muted-foreground">
-        <span>for: {rec.audience}</span>
-        <span>brief generated from model output · not investment advice</span>
+        <span>
+          {t("rec.priority", { p: rec.priority })} · {t("rec.for", { audience: audienceLabel })}
+        </span>
+        <span>{t("rec.foot")}</span>
       </div>
     </Panel>
   );

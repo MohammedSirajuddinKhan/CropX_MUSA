@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
 import { formatHa } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
+import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<string, string> = {
   farmer: "FARMER",
@@ -17,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
  */
 export function PlantingSignals() {
   const { bundle, signalCount, injectedReports, injectSignals } = useConsole();
+  const { t, lang } = useLang();
   const [pulse, setPulse] = useState(0);
   const season = bundle.season;
 
@@ -30,29 +33,29 @@ export function PlantingSignals() {
 
   return (
     <Panel
-      title="Planting signals"
-      meta="prototype stream · simulated"
+      title={t("sig.title")}
+      meta={t("sig.meta")}
       right={
         <span className="font-mono text-[10px] text-muted-foreground">
-          {signalCount.toLocaleString("en-IN")} reports
+          {t("sig.reports", { n: signalCount.toLocaleString("en-IN") })}
         </span>
       }
     >
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <p className="font-mono-t">Est. planting</p>
+          <p className="font-mono-t">{t("sig.estPlanting")}</p>
           <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
             {formatHa(season.plantingAreaHa)}
           </p>
         </div>
         <div>
-          <p className="font-mono-t">5-yr median</p>
+          <p className="font-mono-t">{t("sig.median5yr")}</p>
           <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
             {formatHa(season.baselineAreaHa)}
           </p>
         </div>
         <div>
-          <p className="font-mono-t">Deviation</p>
+          <p className="font-mono-t">{t("sig.deviation")}</p>
           <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-risk-high">
             +{deviation.toFixed(1)}%
           </p>
@@ -77,7 +80,7 @@ export function PlantingSignals() {
                 </span>
               </div>
               <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {formatHa(sig.areaHa)} · {sig.minutesAgo}m ago
+                {formatHa(sig.areaHa)} · {t("sig.minAgo", { n: sig.minutesAgo })}
               </span>
             </li>
           ))}
@@ -87,7 +90,7 @@ export function PlantingSignals() {
       {/* Injector */}
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
         <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          inject demo reports
+          {t("sig.inject")}
         </span>
         {[100, 250].map((n) => (
           <button
@@ -99,9 +102,10 @@ export function PlantingSignals() {
             +{n}
           </button>
         ))}
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-          coverage {bundle.season.signalCoverage}%
-          {injectedReports > 0 && ` · +${injectedReports.toLocaleString("en-IN")} injected`}
+        <span className={cn("ml-auto font-mono text-[10px] text-muted-foreground")}>
+          {t("sig.coverage", { n: bundle.season.signalCoverage })}
+          {injectedReports > 0 &&
+            ` · ${t("sig.injected", { n: injectedReports.toLocaleString("en-IN") })}`}
         </span>
       </div>
     </Panel>

@@ -404,6 +404,11 @@ export function buildDataQuality(): DataQuality {
         detail: "Simulated FPO/farmer stream — prototype only, explicitly not live farmer reports",
         kind: "simulated",
       },
+      {
+        label: "mandi",
+        detail: "Daily wholesale min/max/modal mandi prices fetched LIVE from AGMARKNET (data.gov.in, resource 9ef84268) into Convex; refreshed every 6 h by cron. Official data; demo values appear only when the ingest has not run.",
+        kind: "official",
+      },
     ],
   };
 }

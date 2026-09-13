@@ -2,6 +2,9 @@ import { useConsole } from "./console-state";
 import { StatusTag } from "./StatusTag";
 import { formatT, formatHa } from "@/lib/cropx/format";
 import { useAnimatedNumber } from "@/hooks/use-animated-number";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
+import { bandLabelT } from "./labels";
 import { cn } from "@/lib/utils";
 
 function AnimatedRisk({ value }: { value: number }) {
@@ -15,7 +18,11 @@ function AnimatedRisk({ value }: { value: number }) {
  */
 export function RiskHeader() {
   const { scenario, bundle } = useConsole();
+  const { t, lang } = useLang();
   const r = scenario.risk;
+  const crop = cropName(bundle.crop.id, lang);
+  const region = districtName(bundle.region.id, lang);
+  const bandText = bandLabelT(t, r.band);
 
   return (
     <section
@@ -29,15 +36,15 @@ export function RiskHeader() {
       <div className="flex items-start gap-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            {bundle.region.district} · {bundle.region.state}
+            {region} · {bundle.region.state}
           </p>
           <h1 className="mt-0.5 text-[19px] font-semibold leading-tight tracking-tight text-foreground">
-            {bundle.crop.name} — glut risk
+            {t("risk.glutRiskTitle", { crop })}
           </h1>
           <div className="mt-1.5 flex items-center gap-2">
-            <StatusTag band={r.band} label={r.band} />
+            <StatusTag band={r.band} label={bandText} />
             <span className="font-mono text-[10.5px] text-muted-foreground">
-              {r.weeksToHarvest} wks to harvest
+              {t("risk.wksToHarvest", { n: r.weeksToHarvest })}
             </span>
           </div>
         </div>
@@ -46,7 +53,7 @@ export function RiskHeader() {
       <div className="flex items-center gap-6 md:ml-auto md:pl-6 md:border-l md:border-border">
         {/* Big number */}
         <div>
-          <p className="font-mono-t">score</p>
+          <p className="font-mono-t">{t("risk.score")}</p>
           <p
             className={cn(
               "font-mono text-[44px] font-semibold leading-none tabular-nums",
@@ -63,16 +70,17 @@ export function RiskHeader() {
             <span className="text-[18px] font-normal text-muted-foreground">/100</span>
           </p>
           <p className="mt-1 font-mono text-[10.5px] text-muted-foreground">
-            range {r.riskRange[0]}–{r.riskRange[1]} · confidence {r.confidence}%
+            {t("risk.range", { lo: r.riskRange[0], hi: r.riskRange[1] })} ·{" "}
+            {t("risk.confidence", { n: r.confidence })}
           </p>
         </div>
 
         {/* Key quantities */}
         <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
-          <HeadStat label="expected supply" value={`+${Math.round(r.productionChangePct)}%`} sub="vs 5-yr median" />
-          <HeadStat label="arrivals vs capacity" value={`${Math.round(r.absorptionPct)}%`} sub="of absorption" />
-          <HeadStat label="oversupply gap" value={formatT(r.oversupplyGapT)} sub={`${Math.round(r.oversupplyGapPct)}% of capacity`} />
-          <HeadStat label="planting" value={formatHa(bundle.season.plantingAreaHa)} sub={`median ${formatHa(bundle.season.baselineAreaHa)}`} />
+          <HeadStat label={t("risk.expectedSupply")} value={`+${Math.round(r.productionChangePct)}%`} sub={t("risk.vsMedian")} />
+          <HeadStat label={t("risk.arrivalsVsCapacity")} value={`${Math.round(r.absorptionPct)}%`} sub={t("risk.ofAbsorption")} />
+          <HeadStat label={t("risk.oversupplyGap")} value={formatT(r.oversupplyGapT)} sub={t("risk.ofCapacity", { n: Math.round(r.oversupplyGapPct) })} />
+          <HeadStat label={t("risk.planting")} value={formatHa(bundle.season.plantingAreaHa)} sub={t("risk.median", { area: formatHa(bundle.season.baselineAreaHa) })} />
         </div>
       </div>
     </section>

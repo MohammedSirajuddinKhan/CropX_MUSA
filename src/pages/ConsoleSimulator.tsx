@@ -9,6 +9,7 @@ import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 import { VillageTable } from "@/components/cropx/VillageTable";
 import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
 import { CropProvenance } from "@/components/cropx/CropProvenance";
+import { MandiPrices } from "@/components/cropx/MandiPrices";
 
 /**
  * Main console screen — the Scenario Simulator is the product.
@@ -35,6 +36,9 @@ export default function ConsoleSimulator() {
         <VillageTable />
         <DistrictRiskGrid compact />
       </div>
+
+      {/* LIVE government mandi prices (AGMARKNET via data.gov.in) */}
+      <MandiPrices />
 
       <CropProvenance />
 

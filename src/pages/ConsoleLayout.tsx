@@ -2,15 +2,16 @@ import { Outlet } from "react-router";
 import { AppSidebar } from "@/components/cropx/AppSidebar";
 import { TopBar } from "@/components/cropx/TopBar";
 import { ConsoleProvider, useConsole } from "@/components/cropx/console-state";
-import { CROPS } from "@/lib/cropx/dataset";
+import { useLang } from "@/i18n";
 
 function TopBarBridge() {
   const { bundle, scenario } = useConsole();
+  const { t } = useLang();
   return (
     <TopBar
       region={bundle.region}
       crop={bundle.crop}
-      horizon={`${scenario.risk.weeksToHarvest} weeks`}
+      horizon={t("top.weeks", { n: scenario.risk.weeksToHarvest })}
       updated={bundle.quality.lastUpdatedLabel}
       coverage={bundle.season.signalCoverage}
     />

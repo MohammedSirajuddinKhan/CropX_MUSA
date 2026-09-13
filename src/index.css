@@ -96,9 +96,52 @@
   --risk-critical: oklch(0.5 0.19 25);
   --fresh: oklch(0.47 0.09 148);                /* status green (terminal prompt) */
   --fresh-foreground: oklch(0.985 0.004 120);
+  --grid-dot: oklch(0.22 0.005 90 / 0.055);
 }
 
-/* Single-source light terminal theme: dark mode is intentionally not themed. */
+/* Dark terminal theme: graphite surfaces, warm amber prompt accent.
+   Same terminal discipline — mono type, thin borders, dense data — just
+   inverted for control rooms / night shifts. */
+.dark {
+  --background: oklch(0.17 0.004 100);
+  --foreground: oklch(0.91 0.004 100);
+  --card: oklch(0.2 0.004 100);
+  --card-foreground: oklch(0.91 0.004 100);
+  --popover: oklch(0.2 0.004 100);
+  --popover-foreground: oklch(0.91 0.004 100);
+  --primary: oklch(0.88 0.006 100);
+  --primary-foreground: oklch(0.17 0.004 100);
+  --secondary: oklch(0.25 0.005 100);
+  --secondary-foreground: oklch(0.87 0.004 100);
+  --muted: oklch(0.25 0.005 100);
+  --muted-foreground: oklch(0.64 0.006 100);
+  --accent: oklch(0.28 0.006 100);
+  --accent-foreground: oklch(0.91 0.004 100);
+  --destructive: oklch(0.62 0.19 25);
+  --border: oklch(0.32 0.006 100);
+  --input: oklch(0.34 0.006 100);
+  --ring: oklch(0.75 0.1 80);
+  --chart-1: oklch(0.72 0.02 100);
+  --chart-2: oklch(0.78 0.13 150);
+  --chart-3: oklch(0.78 0.13 70);
+  --chart-4: oklch(0.68 0.19 25);
+  --chart-5: oklch(0.7 0.05 110);
+  --sidebar: oklch(0.19 0.004 100);
+  --sidebar-foreground: oklch(0.91 0.004 100);
+  --sidebar-primary: oklch(0.88 0.006 100);
+  --sidebar-primary-foreground: oklch(0.17 0.004 100);
+  --sidebar-accent: oklch(0.27 0.006 100);
+  --sidebar-accent-foreground: oklch(0.91 0.004 100);
+  --sidebar-border: oklch(0.32 0.006 100);
+  --sidebar-ring: oklch(0.75 0.1 80);
+  --risk-low: oklch(0.72 0.12 150);
+  --risk-medium: oklch(0.8 0.12 85);
+  --risk-high: oklch(0.76 0.14 55);
+  --risk-critical: oklch(0.7 0.18 25);
+  --fresh: oklch(0.78 0.13 80);                 /* terminal prompt → warm amber */
+  --fresh-foreground: oklch(0.17 0.004 100);
+  --grid-dot: oklch(0.91 0.004 100 / 0.07);
+}
 
 @layer base {
   * {
@@ -118,6 +161,9 @@
   ::selection {
     background: oklch(0.47 0.09 148 / 0.18);
   }
+  .dark ::selection {
+    background: oklch(0.78 0.13 80 / 0.25);
+  }
 }
 
 @layer utilities {
@@ -129,9 +175,9 @@
     text-transform: uppercase;
     color: var(--muted-foreground);
   }
-  /* dotted terminal grid backdrop */
+  /* dotted terminal grid backdrop — theme-aware dot ink */
   .bg-term-grid {
-    background-image: radial-gradient(oklch(0.22 0.005 90 / 0.055) 1px, transparent 1px);
+    background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
     background-size: 18px 18px;
   }
   /* thin ruled rows, terminal table feel */

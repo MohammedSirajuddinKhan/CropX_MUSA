@@ -3,6 +3,9 @@ import { Panel } from "./Panel";
 import { StatusTag } from "./StatusTag";
 import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { formatT } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
+import { cropName } from "@/i18n/names";
+import { bandLabelT } from "./labels";
 import type { RiskAssessment } from "@/lib/cropx/types";
 
 function AnimatedPct({ value, digits = 0 }: { value: number; digits?: number }) {
@@ -40,6 +43,8 @@ export function ScenarioSimulator() {
     setPlantingDelta,
     setCapacityDelta,
   } = useConsole();
+  const { t, lang } = useLang();
+  const crop = cropName(bundle.crop.id, lang);
 
   const b = baseline.risk;
   const s = scenario.risk;
@@ -54,8 +59,8 @@ export function ScenarioSimulator() {
 
   return (
     <Panel
-      title="Scenario Simulator"
-      meta="what-if planting & absorption levers"
+      title={t("sim.title")}
+      meta={t("sim.meta")}
       right={
         isScenario ? (
           <button
@@ -66,10 +71,10 @@ export function ScenarioSimulator() {
             }}
             className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground underline underline-offset-4 hover:text-foreground"
           >
-            reset to baseline
+            {t("sim.reset")}
           </button>
         ) : (
-          <span className="font-mono text-[10px] text-muted-foreground">baseline state</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{t("sim.baselineState")}</span>
         )
       }
     >
@@ -83,7 +88,7 @@ export function ScenarioSimulator() {
                 htmlFor="planting-slider"
                 className="font-mono text-[11px] text-muted-foreground"
               >
-                Projected planting change
+                {t("sim.plantingChange")}
               </label>
               <span className="font-mono text-[13px] font-semibold tabular-nums text-foreground">
                 {plantingDeltaPct > 0 ? "+" : plantingDeltaPct < 0 ? "−" : "±"}
@@ -99,17 +104,17 @@ export function ScenarioSimulator() {
               value={plantingDeltaPct}
               onChange={(e) => setPlantingDelta(Number(e.target.value))}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-none bg-input accent-fresh focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              aria-valuetext={`${plantingDeltaPct > 0 ? "plus" : plantingDeltaPct < 0 ? "minus" : "no"} ${Math.abs(plantingDeltaPct)} percent planting change`}
+              aria-valuetext={`${plantingDeltaPct > 0 ? "+" : plantingDeltaPct < 0 ? "−" : ""}${Math.abs(plantingDeltaPct)}%`}
             />
             <div className="mt-1.5 flex justify-between font-mono text-[10px] text-muted-foreground/80">
-              {TICKS.map((t) => (
+              {TICKS.map((tick) => (
                 <button
-                  key={t}
+                  key={tick}
                   type="button"
-                  onClick={() => setPlantingDelta(t)}
+                  onClick={() => setPlantingDelta(tick)}
                   className="hover:text-foreground"
                 >
-                  {t > 0 ? `+${t}` : t}
+                  {tick > 0 ? `+${tick}` : tick}
                 </button>
               ))}
             </div>
@@ -122,7 +127,7 @@ export function ScenarioSimulator() {
                 htmlFor="capacity-slider"
                 className="font-mono text-[11px] text-muted-foreground"
               >
-                Market absorption shift
+                {t("sim.absorptionShift")}
               </label>
               <span className="font-mono text-[13px] font-semibold tabular-nums text-foreground">
                 {capacityDeltaPct > 0 ? "+" : capacityDeltaPct < 0 ? "−" : "±"}
@@ -132,36 +137,34 @@ export function ScenarioSimulator() {
             <input
               id="capacity-slider"
               type="range"
-              aria-label="Market absorption shift"
+              aria-label={t("sim.absorptionShift")}
               min={-15}
               max={15}
               step={1}
               value={capacityDeltaPct}
               onChange={(e) => setCapacityDelta(Number(e.target.value))}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-none bg-input accent-fresh focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              aria-valuetext={`${capacityDeltaPct} percent absorption shift`}
+              aria-valuetext={`${capacityDeltaPct}%`}
             />
             <div className="mt-1.5 flex justify-between font-mono text-[10px] text-muted-foreground/80">
-              <span>−15% (disruption)</span>
-              <span>0</span>
-              <span>+15% (new buyers/storage)</span>
+              <span>{t("sim.absorptionLow")}</span>
+              <span>{t("sim.absorptionMid")}</span>
+              <span>{t("sim.absorptionHigh")}</span>
             </div>
           </div>
 
           {/* Diversification preset */}
           <div className="border border-dashed border-border p-3">
-            <p className="font-mono-t">Preset · diversify planting</p>
+            <p className="font-mono-t">{t("sim.presetTitle")}</p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-secondary-foreground">
-              Shift roughly a quarter of marginal onion plots out of onion. Area
-              falls below the 5-yr median and projected arrivals move back within
-              absorption tolerance.
+              {t("sim.presetBody", { crop })}
             </p>
             <button
               type="button"
               onClick={() => setPlantingDelta(-23)}
               className="mt-2 border border-border bg-secondary px-3 py-1 font-mono text-[11px] font-medium text-foreground hover:bg-accent"
             >
-              Run diversification scenario →
+              {t("sim.presetRun")}
             </button>
           </div>
         </div>
@@ -172,20 +175,21 @@ export function ScenarioSimulator() {
           <div className="border border-border bg-secondary/40 p-3">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-mono-t">Glut risk — scenario</p>
+                <p className="font-mono-t">{t("sim.scenarioRisk")}</p>
                 <p className="mt-1 font-mono text-[34px] font-semibold leading-none tabular-nums text-foreground">
                   <AnimatedPct value={s.glutRisk} />
                   <span className="ml-1 text-[15px] font-normal text-muted-foreground">%</span>
                 </p>
                 <p className="mt-1 font-mono text-[10.5px] text-muted-foreground">
-                  range {s.riskRange[0]}–{s.riskRange[1]}% · conf {s.confidence}%
+                  {t("sim.range", { lo: s.riskRange[0], hi: s.riskRange[1] })} ·{" "}
+                  {t("sim.conf", { n: s.confidence })}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1.5">
-                <StatusTag band={s.band} label={s.band} />
+                <StatusTag band={s.band} label={bandLabelT(t, s.band)} />
                 {isScenario && (
                   <span className="font-mono text-[11px] text-muted-foreground">
-                    baseline <span className="tabular-nums">{b.glutRisk}%</span>{" "}
+                    {t("sim.baselineShort", { n: b.glutRisk })}{" "}
                     {renderDelta(s.glutRisk - b.glutRisk, 0)}
                   </span>
                 )}
@@ -216,28 +220,31 @@ export function ScenarioSimulator() {
           {/* Supply stats: scenario vs baseline */}
           <div className="grid grid-cols-2 gap-3">
             <StatCell
-              label="Expected production"
+              label={t("sim.expectedProduction")}
               scenario={<AnimatedReadout value={s.expectedProductionT} format={formatT} />}
               baseline={<AnimatedReadout value={b.expectedProductionT} format={formatT} />}
               delta={s.expectedProductionT - b.expectedProductionT}
               formatDelta={formatT}
+              baseLabel={t("sim.base")}
             />
             <StatCell
-              label="Expected arrivals"
+              label={t("sim.expectedArrivals")}
               scenario={<AnimatedReadout value={s.expectedArrivalsT} format={formatT} />}
               baseline={<AnimatedReadout value={b.expectedArrivalsT} format={formatT} />}
               delta={s.expectedArrivalsT - b.expectedArrivalsT}
               formatDelta={formatT}
+              baseLabel={t("sim.base")}
             />
             <StatCell
-              label="Oversupply gap"
+              label={t("sim.oversupplyGap")}
               scenario={<AnimatedReadout value={s.oversupplyGapT} format={formatT} />}
               baseline={<AnimatedReadout value={b.oversupplyGapT} format={formatT} />}
               delta={s.oversupplyGapT - b.oversupplyGapT}
               formatDelta={formatT}
+              baseLabel={t("sim.base")}
             />
             <StatCell
-              label="vs 5-yr median"
+              label={t("sim.vsMedian")}
               scenario={
                 <span>
                   {s.productionChangePct >= 0 ? "+" : "−"}
@@ -250,14 +257,16 @@ export function ScenarioSimulator() {
                   {Math.abs(b.productionChangePct).toFixed(0)}%
                 </span>
               }
+              baseLabel={t("sim.base")}
             />
           </div>
 
           {/* Confidence + honesty */}
           <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Engine: {s.modelVersion} · signals: simulated FPO/farmer stream
-            (prototype) · coverage {bundle.season.signalCoverage}% · production model
-            is calibrated to a Nashik rabi-onion season, not a live XGBoost backend.
+            {t("sim.engineNote", {
+              model: s.modelVersion,
+              coverage: bundle.season.signalCoverage,
+            })}
           </p>
         </div>
       </div>
@@ -271,12 +280,14 @@ function StatCell({
   baseline,
   delta,
   formatDelta,
+  baseLabel,
 }: {
   label: string;
   scenario: React.ReactNode;
   baseline: React.ReactNode;
   delta?: number;
   formatDelta?: (n: number) => string;
+  baseLabel: string;
 }) {
   const showDelta = delta !== undefined && Math.round(Math.abs(delta)) > 0;
   return (
@@ -286,7 +297,7 @@ function StatCell({
         {scenario}
       </p>
       <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-        base {baseline}
+        {baseLabel} {baseline}
         {showDelta && formatDelta && (
           <span className="ml-1 text-risk-high">
             ({delta > 0 ? "+" : "−"}
@@ -297,3 +308,6 @@ function StatCell({
     </div>
   );
 }
+
+// keep RiskAssessment import referenced for type-safety consumers
+export type { RiskAssessment };

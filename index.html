@@ -6,6 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="CropX — see the glut before the market does. Early-warning intelligence for regional crop oversupply." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,6 +20,13 @@
 
 <body>
   <div id="root"></div>
+  <script>
+    // No-flash theme init: apply the stored theme before first paint.
+    try {
+      var t = localStorage.getItem("cropx.theme");
+      if (t === "dark") document.documentElement.classList.add("dark");
+    } catch (e) {}
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
