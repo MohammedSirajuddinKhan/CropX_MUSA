@@ -3,6 +3,9 @@ import { useConsole } from "@/components/cropx/console-state";
 import { Panel } from "@/components/cropx/Panel";
 import { VillageTable } from "@/components/cropx/VillageTable";
 import { formatHa } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
+import { confidenceLabelT } from "@/components/cropx/labels";
 import { cn } from "@/lib/utils";
 
 const KIND_LABEL: Record<string, string> = {
@@ -26,6 +29,7 @@ export default function ConsoleSignals() {
     baseline,
     scenario,
   } = useConsole();
+  const { t, lang } = useLang();
   const [pulse, setPulse] = useState(0);
   const season = bundle.season;
 
@@ -42,13 +46,16 @@ export default function ConsoleSignals() {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {/* Stream */}
         <Panel
-          title="Signal stream"
-          meta={`prototype · simulated FPO/farmer reports · ${bundle.region.name} · ${bundle.crop.name.toLowerCase()}`}
+          title={t("sp.title")}
+          meta={t("sp.meta", {
+            region: districtName(bundle.region.id, lang),
+            crop: cropName(bundle.crop.id, lang),
+          })}
           right={
             <span className="font-mono text-[10px] text-muted-foreground">
-              {signalCount.toLocaleString("en-IN")} reports
+              {t("sig.reports", { n: signalCount.toLocaleString("en-IN") })}
               {injectedReports > 0 &&
-                ` · +${injectedReports.toLocaleString("en-IN")} injected`}
+                ` · ${t("sig.injected", { n: injectedReports.toLocaleString("en-IN") })}`}
             </span>
           }
         >
@@ -65,7 +72,7 @@ export default function ConsoleSignals() {
                   </span>
                 </div>
                 <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                  {formatHa(sig.areaHa)} · {sig.minutesAgo}m ago
+                  {formatHa(sig.areaHa)} · {t("sig.minAgo", { n: sig.minutesAgo })}
                 </span>
               </li>
             ))}
@@ -73,7 +80,7 @@ export default function ConsoleSignals() {
 
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              inject demo reports
+              {t("sig.inject")}
             </span>
             {[100, 250, 500].map((n) => (
               <button
@@ -86,17 +93,17 @@ export default function ConsoleSignals() {
               </button>
             ))}
             <span className="font-mono text-[10px] text-muted-foreground/80">
-              (bounded · max 500 per district)
+              {t("sp.bounded")}
             </span>
           </div>
         </Panel>
 
         {/* Signal quality */}
         <div className="flex flex-col gap-3">
-          <Panel title="Signal quality">
+          <Panel title={t("sp.quality")}>
             <div className="flex flex-col gap-2.5">
               <div>
-                <p className="font-mono-t">coverage</p>
+                <p className="font-mono-t">{t("top.coverage")}</p>
                 <p className="mt-0.5 font-mono text-[22px] font-semibold leading-none tabular-nums text-foreground">
                   {season.signalCoverage}%
                 </p>
@@ -108,19 +115,19 @@ export default function ConsoleSignals() {
                 </div>
               </div>
               <div className="mt-1 border-t border-border/60 pt-2.5">
-                <p className="font-mono-t">confidence</p>
+                <p className="font-mono-t">{t("sp.confidence")}</p>
                 <p className="mt-0.5 font-mono text-[13px] font-medium text-foreground">
-                  {season.signalConfidence}
+                  {confidenceLabelT(t, season.signalConfidence)}
                 </p>
               </div>
               <div>
-                <p className="font-mono-t">reports</p>
+                <p className="font-mono-t">{t("sp.reports")}</p>
                 <p className="mt-0.5 font-mono text-[13px] font-medium tabular-nums text-foreground">
                   {season.reportCount.toLocaleString("en-IN")}
                 </p>
               </div>
               <div>
-                <p className="font-mono-t">est. planting vs median</p>
+                <p className="font-mono-t">{t("sp.estVsMedian")}</p>
                 <p className="mt-0.5 font-mono text-[13px] font-medium tabular-nums text-foreground">
                   {formatHa(season.plantingAreaHa)}{" "}
                   <span className={deviation >= 0 ? "text-risk-high" : "text-fresh"}>
@@ -132,15 +139,15 @@ export default function ConsoleSignals() {
             </div>
           </Panel>
 
-          <Panel title="Effect on risk" meta="live">
+          <Panel title={t("sp.effectTitle")} meta={t("sp.live")}>
             <div className="flex items-baseline justify-between">
-              <span className="font-mono text-[11px] text-muted-foreground">baseline</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{t("sp.baseline")}</span>
               <span className="font-mono text-[15px] font-semibold tabular-nums text-foreground">
                 {baseline.risk.glutRisk}%
               </span>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="font-mono text-[11px] text-muted-foreground">current scenario</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{t("sp.currentScenario")}</span>
               <span
                 className={cn(
                   "font-mono text-[15px] font-semibold tabular-nums",
@@ -155,8 +162,7 @@ export default function ConsoleSignals() {
               </span>
             </div>
             <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-              Injected reports raise coverage, which narrows the uncertainty band and
-              can shift confidence — the same effect a live stream has on the model.
+              {t("sp.effectNote")}
             </p>
           </Panel>
 

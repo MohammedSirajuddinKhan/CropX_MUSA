@@ -1,6 +1,8 @@
 import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
 import { formatHa } from "@/lib/cropx/format";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,25 +12,30 @@ import { cn } from "@/lib/utils";
  */
 export function VillageTable() {
   const { bundle } = useConsole();
+  const { t, lang } = useLang();
   const region = bundle.region;
   const villages = bundle.villages;
-  const cropName = bundle.crop.name.toLowerCase();
+  const crop = cropName(bundle.crop.id, lang);
 
   if (!villages.length) return null;
 
   return (
     <Panel
-      title="Village / taluka nodes"
-      meta={`${villages.length} monitored nodes · ${region.name} · ${cropName}`}
+      title={t("vil.title")}
+      meta={t("vil.meta", {
+        n: villages.length,
+        region: districtName(region.id, lang),
+        crop,
+      })}
     >
       <table className="w-full border-collapse">
         <thead>
           <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            <th className="py-1.5 pr-2 font-medium">Node</th>
-            <th className="py-1.5 px-2 text-right font-medium">Planting</th>
-            <th className="py-1.5 px-2 text-right font-medium">Share</th>
-            <th className="py-1.5 px-2 text-right font-medium">vs median</th>
-            <th className="py-1.5 pl-2 text-right font-medium">Stream</th>
+            <th className="py-1.5 pr-2 font-medium">{t("vil.node")}</th>
+            <th className="py-1.5 px-2 text-right font-medium">{t("vil.planting")}</th>
+            <th className="py-1.5 px-2 text-right font-medium">{t("vil.share")}</th>
+            <th className="py-1.5 px-2 text-right font-medium">{t("vil.vsMedian")}</th>
+            <th className="py-1.5 pl-2 text-right font-medium">{t("vil.stream")}</th>
           </tr>
         </thead>
         <tbody>
@@ -39,7 +46,7 @@ export function VillageTable() {
                   {v.name}
                   {v.mandi && (
                     <span className="border border-border bg-secondary px-1 py-px font-mono text-[8.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      mandi
+                      {t("vil.mandi")}
                     </span>
                   )}
                 </span>
@@ -60,15 +67,14 @@ export function VillageTable() {
                 {Math.abs(v.deviationPct).toFixed(1)}%
               </td>
               <td className="py-1.5 pl-2 text-right font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {v.minutesAgo}m ago
+                {t("sig.minAgo", { n: v.minutesAgo })}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-        Node areas estimated from simulated FPO/taluka reports; shares
-        normalized within the district. Prototype data, not live surveys.
+        {t("vil.foot")}
       </p>
     </Panel>
   );

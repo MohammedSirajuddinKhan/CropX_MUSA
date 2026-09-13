@@ -1,6 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
+import { useLang } from "@/i18n";
+import type { TranslationKey } from "@/i18n/en";
+import type { RiskBand } from "@/lib/cropx/types";
+import { cropName, districtName } from "@/i18n/names";
+import { bandLabelT } from "./labels";
 import { cn } from "@/lib/utils";
 import { EXCLUDED_DISTRICTS } from "@/lib/cropx/dataset";
 
@@ -12,12 +17,12 @@ import { EXCLUDED_DISTRICTS } from "@/lib/cropx/dataset";
 
 type Cell = { id: string; name: string; risk: number; band: string };
 
-const DIVISIONS: { label: string; ids: string[] }[] = [
-  { label: "Pune division", ids: ["pune", "ahmednagar", "solapur", "satara", "sangli", "kolhapur"] },
-  { label: "Nashik division", ids: ["nashik", "dhule", "nandurbar", "jalgaon", "buldhana", "palghar", "thane"] },
-  { label: "Chhatrapati Sambhajinagar (Marathwada)", ids: ["aurangabad", "beed", "jalna", "latur", "dharashiv", "nanded", "parbhani", "hingoli"] },
-  { label: "Nagpur (Vidarbha)", ids: ["nagpur", "amravati", "akola", "washim", "yavatmal", "wardha", "bhandara", "gondia", "chandrapur", "gadchiroli"] },
-  { label: "Konkan", ids: ["raigad", "ratnagiri", "sindhudurg"] },
+const DIVISIONS: { labelKey: TranslationKey; ids: string[] }[] = [
+  { labelKey: "grid.div.pune", ids: ["pune", "ahmednagar", "solapur", "satara", "sangli", "kolhapur"] },
+  { labelKey: "grid.div.nashik", ids: ["nashik", "dhule", "nandurbar", "jalgaon", "buldhana", "palghar", "thane"] },
+  { labelKey: "grid.div.marathwada", ids: ["aurangabad", "beed", "jalna", "latur", "dharashiv", "nanded", "parbhani", "hingoli"] },
+  { labelKey: "grid.div.vidarbha", ids: ["nagpur", "amravati", "akola", "washim", "yavatmal", "wardha", "bhandara", "gondia", "chandrapur", "gadchiroli"] },
+  { labelKey: "grid.div.konkan", ids: ["raigad", "ratnagiri", "sindhudurg"] },
 ];
 
 function bandTone(risk: number): { cell: string; text: string } {
@@ -28,7 +33,8 @@ function bandTone(risk: number): { cell: string; text: string } {
 }
 
 export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
-  const { districtRows, bundle, setRegion } = useConsole();
+  const { districtRows, bundle, setRegion, crop } = useConsole();
+  const { t, lang } = useLang();
 
   const byId = useMemo(() => {
     const m = new Map<string, Cell>();
@@ -45,11 +51,14 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
 
   return (
     <Panel
-      title="District risk grid"
-      meta={`${districtRows.length} monitored districts · onion baseline`}
+      title={t("grid.title")}
+      meta={t("grid.meta", {
+        n: districtRows.length,
+        crop: cropName(bundle.crop.id, lang),
+      })}
       right={
         <span className="font-mono text-[10px] text-muted-foreground">
-          {EXCLUDED_DISTRICTS.map((d) => d.name).join(" · ")} — not monitored (urban, negligible cultivated area)
+          {EXCLUDED_DISTRICTS.map((d) => d.name).join(" · ")} — {t("grid.notMonitored")}
         </span>
       }
       className={compact ? "" : undefined}
@@ -61,9 +70,9 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
             .filter((c): c is Cell => c !== undefined);
           if (cells.length === 0) return null;
           return (
-            <div key={div.label}>
+            <div key={div.labelKey}>
               <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground">
-                {div.label}
+                {t(div.labelKey)}
               </p>
               <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 lg:grid-cols-7">
                 {cells.map((c) => {
@@ -74,7 +83,11 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
                       key={c.id}
                       type="button"
                       onClick={() => setRegion(c.id)}
-                      title={`${c.name} — glut risk ${c.risk}% (${c.band})`}
+                      title={t("grid.cellTitle", {
+                        name: districtName(c.id, lang),
+                        risk: c.risk,
+                        band: bandLabelT(t, c.band as RiskBand),
+                      })}
                       className={cn(
                         "border px-1.5 py-1 text-left transition-colors",
                         tone.cell,
@@ -84,7 +97,7 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
                       )}
                     >
                       <span className="block truncate text-[11px] font-medium text-foreground">
-                        {c.name}
+                        {districtName(c.id, lang)}
                       </span>
                       <span className={cn("font-mono text-[11.5px] font-semibold tabular-nums", tone.text)}>
                         {c.risk}%

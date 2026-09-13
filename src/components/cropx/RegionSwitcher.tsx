@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useConsole } from "./console-state";
+import { useLang } from "@/i18n";
+import { cropName, districtName } from "@/i18n/names";
 import { cn } from "@/lib/utils";
 
 /**
  * Compact district + crop switcher for the strip above panels: hero
  * districts as one-click chips (with baseline risk for the active crop),
  * everything else behind a searchable "all districts" combobox, and a crop
- * selector listing every monitored vegetable. Selection resets scenario
- * state (via console).
+ * selector listing every monitored vegetable. Names localize with the
+ * active language; selection resets scenario state (via console).
  */
 export function RegionSwitcher() {
   const {
@@ -19,6 +21,7 @@ export function RegionSwitcher() {
     crop,
     setCrop,
   } = useConsole();
+  const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -54,13 +57,18 @@ export function RegionSwitcher() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return restRows;
-    return restRows.filter((r) => r.region.name.toLowerCase().includes(q));
-  }, [restRows, query]);
+    // Match against English AND localized names so Devanagari typing works.
+    return restRows.filter(
+      (r) =>
+        r.region.name.toLowerCase().includes(q) ||
+        districtName(r.region.id, lang).toLowerCase().includes(q),
+    );
+  }, [restRows, query, lang]);
 
   return (
     <div className="flex flex-wrap items-center gap-1 border border-border bg-card p-1">
       <span className="px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        crop
+        {t("top.crop")}
       </span>
       {crops.map((c) => {
         const active = c.id === crop.id;
@@ -76,7 +84,7 @@ export function RegionSwitcher() {
                 : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
             )}
           >
-            {c.name}
+            {cropName(c.id, lang)}
           </button>
         );
       })}
@@ -84,7 +92,7 @@ export function RegionSwitcher() {
       <span className="mx-1 h-4 w-px bg-border" aria-hidden />
 
       <span className="px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        districts
+        {t("mon.colDistrict")}
       </span>
       {heroRows.map(({ region: r, risk }) => {
         const active = r.id === bundle.region.id;
@@ -100,7 +108,7 @@ export function RegionSwitcher() {
                 : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
             )}
           >
-            {r.name}
+            {districtName(r.id, lang)}
             <span
               className={cn(
                 "tabular-nums",
@@ -130,7 +138,7 @@ export function RegionSwitcher() {
               : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
           )}
         >
-          all {regions.length} districts
+          {t("mon.colDistrict")} {regions.length}
           <span aria-hidden className="text-[9px]">{open ? "▲" : "▼"}</span>
         </button>
         {open && (
@@ -139,8 +147,8 @@ export function RegionSwitcher() {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="search districts…"
-              aria-label="Search districts"
+              placeholder={lang === "mr" ? "जिल्हे शोधा…" : lang === "hi" ? "ज़िले खोजें…" : "search districts…"}
+              aria-label={t("mon.colDistrict")}
               className="w-full border-b border-border bg-transparent px-3 py-2 font-mono text-[11.5px] outline-none placeholder:text-muted-foreground/70 focus-visible:outline-none"
             />
             <ul className="max-h-72 overflow-y-auto">
@@ -158,7 +166,7 @@ export function RegionSwitcher() {
                       r.id === bundle.region.id && "bg-secondary text-foreground",
                     )}
                   >
-                    <span className="truncate">{r.name}</span>
+                    <span className="truncate">{districtName(r.id, lang)}</span>
                     <span
                       className={cn(
                         "tabular-nums",
@@ -174,9 +182,9 @@ export function RegionSwitcher() {
                   </button>
                 </li>
               ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 && query.trim() !== "" && (
                 <li className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
-                  no district matches “{query}”
+                  {query}
                 </li>
               )}
             </ul>

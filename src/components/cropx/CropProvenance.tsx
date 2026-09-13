@@ -1,5 +1,7 @@
 import { useConsole } from "./console-state";
 import { Panel } from "./Panel";
+import { useLang } from "@/i18n";
+import { cropName } from "@/i18n/names";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,22 +13,24 @@ import { cn } from "@/lib/utils";
  */
 export function CropProvenance() {
   const { bundle } = useConsole();
+  const { t, lang } = useLang();
   const crop = bundle.crop;
   const p = crop.provenance;
+  const cropLabel = cropName(crop.id, lang);
 
   const perishLabel =
     crop.perishability >= 0.8
-      ? "very high — no storage buffer"
+      ? t("prov.perish.veryHigh")
       : crop.perishability >= 0.6
-        ? "high — days, not weeks"
+        ? t("prov.perish.high")
         : crop.perishability >= 0.4
-          ? "moderate — short storage window"
-          : "lower — storable across seasons";
+          ? t("prov.perish.moderate")
+          : t("prov.perish.lower");
 
   return (
     <Panel
-      title="Data provenance"
-      meta={`${crop.name.toLowerCase()} · season aggregates`}
+      title={t("prov.title")}
+      meta={t("prov.meta", { crop: cropLabel })}
       right={
         <span
           className={cn(
@@ -36,52 +40,55 @@ export function CropProvenance() {
               : "border-risk-medium/40 bg-risk-medium/10 text-risk-medium",
           )}
         >
-          {p.kind}
+          {p.kind === "official" ? t("dq.off") : t("dq.derived")}
         </span>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="font-mono-t">India area</p>
+          <p className="font-mono-t">{t("prov.indiaArea")}</p>
           <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
             {crop.indiaAreaLakhHa.toFixed(2)}{" "}
-            <span className="text-[11px] font-normal text-muted-foreground">lakh ha</span>
-          </p>
-          <p className="font-mono text-[9.5px] text-muted-foreground">{p.year} final estimates</p>
-        </div>
-        <div>
-          <p className="font-mono-t">India production</p>
-          <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
-            {crop.indiaProductionLakhT.toFixed(1)}{" "}
-            <span className="text-[11px] font-normal text-muted-foreground">lakh t</span>
+            <span className="text-[11px] font-normal text-muted-foreground">{t("prov.lakhHa")}</span>
           </p>
           <p className="font-mono text-[9.5px] text-muted-foreground">
-            yield {crop.indiaYieldTPerHa.toFixed(1)} t/ha
+            {t("prov.finalEstimates", { y: p.year })}
           </p>
         </div>
         <div>
-          <p className="font-mono-t">Maharashtra share</p>
+          <p className="font-mono-t">{t("prov.indiaProduction")}</p>
+          <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
+            {crop.indiaProductionLakhT.toFixed(1)}{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">{t("prov.lakhT")}</span>
+          </p>
+          <p className="font-mono text-[9.5px] text-muted-foreground">
+            {t("prov.yield", { n: crop.indiaYieldTPerHa.toFixed(1) })}
+          </p>
+        </div>
+        <div>
+          <p className="font-mono-t">{t("prov.mhShare")}</p>
           <p className="mt-0.5 font-mono text-[15px] font-medium tabular-nums text-foreground">
             {(crop.mhShareOfIndia * 100).toFixed(1)}%
           </p>
           <p className="font-mono text-[9.5px] text-muted-foreground">
-            ≈ {(crop.mhAreaHa / 100_000).toFixed(1)} lakh ha · {crop.mhYieldTPerHa.toFixed(1)} t/ha
+            {t("prov.mhArea", {
+              n: (crop.mhAreaHa / 100_000).toFixed(1),
+              y: crop.mhYieldTPerHa.toFixed(1),
+            })}
           </p>
         </div>
         <div>
-          <p className="font-mono-t">Perishability</p>
+          <p className="font-mono-t">{t("prov.perishability")}</p>
           <p className="mt-0.5 font-mono text-[13px] font-medium leading-tight text-foreground">
             {perishLabel}
           </p>
           <p className="font-mono text-[9.5px] text-muted-foreground">
-            marketable window ≈ {crop.storageWeeks} wk
+            {t("prov.window", { n: crop.storageWeeks })}
           </p>
         </div>
       </div>
       <p className="mt-3 border-t border-border/60 pt-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
-        Source: {p.source}. India-level figures are published statistics;
-        district × crop splits are derived allocations consistent with those
-        totals, and planting signals are simulated (see coverage strip).
+        {t("prov.foot", { source: p.source })}
       </p>
     </Panel>
   );
