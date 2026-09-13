@@ -3,12 +3,22 @@ import { useConsole } from "./console-state";
 import { cn } from "@/lib/utils";
 
 /**
- * Compact district switcher for the strip above panels: hero districts as
- * one-click chips (with baseline risk), everything else behind a searchable
- * "all districts" combobox. Selecting resets scenario state (via console).
+ * Compact district + crop switcher for the strip above panels: hero
+ * districts as one-click chips (with baseline risk for the active crop),
+ * everything else behind a searchable "all districts" combobox, and a crop
+ * selector listing every monitored vegetable. Selection resets scenario
+ * state (via console).
  */
 export function RegionSwitcher() {
-  const { regions, bundle, districtRows, setRegion } = useConsole();
+  const {
+    regions,
+    bundle,
+    districtRows,
+    setRegion,
+    crops,
+    crop,
+    setCrop,
+  } = useConsole();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +59,30 @@ export function RegionSwitcher() {
 
   return (
     <div className="flex flex-wrap items-center gap-1 border border-border bg-card p-1">
+      <span className="px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        crop
+      </span>
+      {crops.map((c) => {
+        const active = c.id === crop.id;
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setCrop(c.id)}
+            className={cn(
+              "px-2.5 py-1 font-mono text-[11.5px] transition-colors",
+              active
+                ? "bg-foreground font-medium text-background"
+                : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+            )}
+          >
+            {c.name}
+          </button>
+        );
+      })}
+
+      <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+
       <span className="px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         districts
       </span>

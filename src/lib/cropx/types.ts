@@ -2,11 +2,9 @@
  * CropX domain types.
  *
  * These mirror the API contract of the future backend:
- *   GET  /api/regions/:regionId/risk
- *   GET  /api/regions/:regionId/forecast
- *   GET  /api/regions/:regionId/signals
- *   GET  /api/regions/:regionId/drivers
- *   POST /api/scenarios
+ *   GET  /api/regions/:regionId/risk?crop=cropId
+ *   GET  /api/crops
+ *   POST /api/scenarios { regionId, cropId, plantingPct, ... }
  *   POST /api/signals
  *   GET  /api/data-quality
  *
@@ -17,12 +15,26 @@
 export type RiskBand = "low" | "medium" | "high" | "critical";
 export type ConfidenceLabel = "low" | "medium" | "medium-high" | "high";
 
+/** How officially anchored a number is. Surfaced in the UI lineage notes. */
+export type ProvenanceKind =
+  | "official" // GoI / NHB published statistic (area, production, yield)
+  | "derived" // computed from official state totals + district patterns
+  | "simulated"; // prototype signal stream / scenario inputs
+
+export interface Provenance {
+  kind: ProvenanceKind;
+  /** e.g. "GoI Final Estimates 2024-25 (PIB)" */
+  source: string;
+  /** e.g. "2024-25" */
+  year: string;
+}
+
 export interface VillageStat {
   /** Taluka / mandi-node name. */
   name: string;
   /** Major APMC market node for the district. */
   mandi: boolean;
-  /** Estimated planting area around this node, ha. */
+  /** Estimated planting area around this node, ha, for the active crop. */
   areaHa: number;
   /** Share of district planting (0-1). */
   share: number;
@@ -42,8 +54,6 @@ export interface Region {
   lon: number;
   /** Approximate planted area, ha — drives map marker weight. */
   areaHa: number;
-  /** Taluka / mandi nodes monitored within the district. */
-  villages: VillageStat[];
   /** Total reports in the simulated signal stream for this district. */
   reportCount: number;
   /** Seed provenance label, shown in the UI honesty notes. */
@@ -54,13 +64,34 @@ export interface Crop {
   id: string;
   name: string;
   unit: string; // "t"
-  /** Weeks from "now" to harvest start. */
+  /** Weeks from "now" to harvest start for the monitored season window. */
   harvestStartWeeks: number;
-  /** Typical yield, t/ha. */
-  typicalYieldTPerHa: number;
+
+  // --- real Indian aggregates (see crops.ts for per-crop sources) ---
+  /** All-India area, lakh ha (1 lakh = 100,000). */
+  indiaAreaLakhHa: number;
+  /** All-India production, lakh tonnes. */
+  indiaProductionLakhT: number;
+  /** Maharashtra share of all-India area (0-1). */
+  mhShareOfIndia: number;
+  /** Maharashtra area under the crop, ha (derived from the above). */
+  mhAreaHa: number;
+  /** All-India average yield, t/ha. */
+  indiaYieldTPerHa: number;
+  /** Maharashtra average yield, t/ha (state avg where published). */
+  mhYieldTPerHa: number;
+  /** 0 = storable (onion/potato/garlic), 1 = extremely perishable (okra). */
+  perishability: number;
+  /** Typical marketable storage window, weeks. */
+  storageWeeks: number;
+  /** Share of the crop's annual area falling in the monitored season window. */
+  seasonWindowShare: number;
+  /** Provenance of the India/MH aggregates shown in the UI. */
+  provenance: Provenance;
 }
 
 export interface SeasonState {
+  cropId: string;
   /** Current estimated planting area, ha (from signal stream). */
   plantingAreaHa: number;
   /** Historical 5-yr median planting area, ha. */
@@ -87,6 +118,8 @@ export interface SeasonState {
   reportCount: number;
   /** Expected yield for the season, t/ha. */
   yieldTPerHa: number;
+  /** District share of the state's area under this crop (0-1). */
+  stateShare: number;
 }
 
 export interface SignalSource {
@@ -177,12 +210,16 @@ export interface DataQuality {
   overallCoverage: number;
   sources: { label: string; coverage: number; status: "ok" | "degraded" | "delayed" }[];
   lastUpdatedLabel: string;
+  /** Number lineage: what is official, what is derived, what is simulated. */
+  lineage: { label: string; detail: string; kind: ProvenanceKind }[];
 }
 
 export interface RegionBundle {
   region: Region;
   crop: Crop;
   season: SeasonState;
+  /** Taluka/mandi nodes for the active district + crop. */
+  villages: VillageStat[];
   signals: Signal[];
   risk: RiskAssessment;
   forecast: ForecastPoint[];

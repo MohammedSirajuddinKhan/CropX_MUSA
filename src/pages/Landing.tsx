@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { runEngine } from "@/lib/cropx/engine";
-import { CROPS, SEASON_STATES } from "@/lib/cropx/dataset";
+import { SEASON_STATES } from "@/lib/cropx/dataset";
+import { CROPS, cropById } from "@/lib/cropx/crops";
 import type { ScenarioResult } from "@/lib/cropx/types";
 import { cn } from "@/lib/utils";
 
 /** Landing-page pipeline demo — a self-contained instance of the risk engine. */
 function PipelineDemo() {
   const [delta, setDelta] = useState(0);
-  const season = SEASON_STATES.nashik;
-  const crop = CROPS[0];
+  const season = SEASON_STATES.nashik.onion;
+  const crop = cropById("onion");
   // Demo scenario runs on top of the current-season deviation (+18.5%),
   // matching the console's semantics: delta is the *additional* change.
   const result: ScenarioResult = useMemo(
@@ -35,7 +36,7 @@ function PipelineDemo() {
       {/* Terminal chrome */}
       <div className="flex items-center justify-between border-b border-border bg-secondary/60 px-3 py-1.5">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          cropx risk engine · nashik · onion
+          cropx risk engine · nashik · onion · {CROPS.length} vegetables monitored
         </span>
         <span className="font-mono text-[10px] text-muted-foreground">demo</span>
       </div>
@@ -154,7 +155,7 @@ export default function Landing() {
               open the console →
             </Link>
             <span className="font-mono text-[10.5px] text-muted-foreground">
-              MUSA CodeX 2026 · problem CX0602 · prototype, simulated signal stream · 34 monitored districts
+              MUSA CodeX 2026 · problem CX0602 · 34 Maharashtra districts × {CROPS.length} vegetables · signals simulated
             </span>
           </div>
         </section>
@@ -214,7 +215,7 @@ export default function Landing() {
         <footer className="border-t border-border py-6">
           <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10.5px] text-muted-foreground">
             <span>cropx · early-warning intelligence for regional crop oversupply</span>
-            <span>prototype — signals simulated · v1: onion, all Maharashtra farming districts</span>
+            <span>crop areas from GoI/NHB statistics · signals simulated · 34 districts × {CROPS.length} vegetables</span>
           </div>
         </footer>
       </main>

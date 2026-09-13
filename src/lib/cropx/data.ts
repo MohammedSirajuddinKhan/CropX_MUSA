@@ -13,40 +13,37 @@ import type {
 import { runEngine } from "./engine";
 import {
   buildDataQuality,
+  buildCropRiskRows,
   buildDistrictRiskRows,
   buildForecast,
   buildSignals,
+  buildVillages,
   CROPS,
   DISTRICT_COUNT,
   EXCLUDED_DISTRICTS,
+  HERO_CROP_ID,
   REGION_ORDER,
   REGIONS,
   SEASON_STATES,
   VILLAGE_COUNT,
 } from "./dataset";
+import { cropById } from "./crops";
 
 /**
- * CropX data adapter.
+ * CropX data adapter — the ONLY module components import for data.
  *
- * v1 ships a mock adapter backed by seeded demo data. Components call
- * `cropxApi.*` exactly as they would call a REST client; swapping in the real
- * backend means replacing the method bodies with fetch() calls to:
+ * Mock surface mirroring the future REST contract:
  *
- *   GET  /api/regions
- *   GET  /api/crops
- *   GET  /api/regions/:regionId/risk
- *   GET  /api/regions/:regionId/forecast
- *   GET  /api/regions/:regionId/signals
- *   GET  /api/regions/:regionId/drivers
- *   POST /api/scenarios
- *   POST /api/signals
- *   GET  /api/data-quality
+ *   GET  /api/regions                       → listRegions()
+ *   GET  /api/crops                         → listCrops()
+ *   GET  /api/regions/:id/risk?crop=c       → getDistrictRisk / runScenario
+ *   GET  /api/regions/:id/forecast?crop=c   → getForecast
+ *   POST /api/scenarios                     → runScenario
+ *   POST /api/signals                       → mergeSignals
+ *   GET  /api/data-quality                  → getDataQuality
  *
- * v1.1 hardening: the adapter is now PURE — no hidden mutable stream state.
- * All dynamic inputs (injected reports, coverage deltas) are passed in
- * explicitly, which makes the engine deterministic per render and safe under
- * React StrictMode double-renders. The old singleton-mutation design could
- * desync UI state from data state.
+ * Reliability contract: no hidden mutable state, unknown ids fall back to
+ * the hero cell instead of crashing, inputs clamped, caches keyed properly.
  */
 
 export interface ScenarioInput {
@@ -57,10 +54,20 @@ export interface ScenarioInput {
 /** Max simulated reports held in the live stream (memory bound). */
 export const MAX_STREAM_SIGNALS = 60;
 
+/** Hero cell of the demo path. */
+const HERO = { region: "nashik", crop: HERO_CROP_ID };
+
+function clampNum(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n));
+}
+
 class CropxApi {
-  /** Engine-computed baseline risk per district, cached once. */
-  private districtRiskCache: Map<string, RiskAssessment> = new Map();
-  private districtRowsCache: ReturnType<typeof buildDistrictRiskRows> | null = null;
+  private districtRiskCache = new Map<string, RiskAssessment>();
+  private districtRowsCache = new Map<
+    string,
+    ReturnType<typeof buildDistrictRiskRows>
+  >();
+  private cropRowsCache = new Map<string, Record<string, number>>();
   private qualityCache: DataQuality | null = null;
 
   listRegions(): Region[] {
@@ -76,126 +83,156 @@ class CropxApi {
   }
 
   getRegion(regionId: string): Region {
-    // Fallback keeps the UI alive if an unknown id slips in (stored state etc).
-    return (
-      REGIONS.find((r) => r.id === regionId) ??
-      REGIONS[0]
-    );
+    return REGIONS.find((r) => r.id === regionId) ?? REGIONS[0];
   }
 
   hasRegion(regionId: string): boolean {
     return REGIONS.some((r) => r.id === regionId);
   }
 
-  getSeason(regionId: string): SeasonState {
+  hasCrop(cropId: string): boolean {
+    return CROPS.some((c) => c.id === cropId);
+  }
+
+  getSeason(regionId: string, cropId: string): SeasonState {
     return (
-      SEASON_STATES[regionId] ??
-      SEASON_STATES[REGION_ORDER[0]] ??
-      SEASON_STATES[REGIONS[0].id]
+      SEASON_STATES[regionId]?.[cropId] ??
+      SEASON_STATES[HERO.region]?.[HERO.crop]
     );
   }
 
-  getBundle(regionId: string, opts?: { signalCoverage?: number; reportCount?: number }): RegionBundle {
+  getBundle(
+    regionId: string,
+    cropId: string,
+    opts?: { signalCoverage?: number; reportCount?: number },
+  ): RegionBundle {
     const region = this.getRegion(regionId);
-    const crop = CROPS[0]; // v1: onion
-    const seasonSeed = this.getSeason(region.id);
+    const crop = cropById(cropId);
+    const seedSeason = this.getSeason(region.id, crop.id);
     const season: SeasonState = {
-      ...seasonSeed,
+      ...seedSeason,
       signalCoverage:
         opts?.signalCoverage !== undefined
-          ? Math.min(92, Math.max(0, opts.signalCoverage))
-          : seasonSeed.signalCoverage,
+          ? clampNum(opts.signalCoverage, 0, 92)
+          : seedSeason.signalCoverage,
       reportCount:
         opts?.reportCount !== undefined
           ? Math.max(0, Math.round(opts.reportCount))
-          : seasonSeed.reportCount,
+          : seedSeason.reportCount,
     };
-    const signals = buildSignals(region.id);
+    const signals = buildSignals(region.id, crop.id);
     return {
       region,
       crop,
       season,
+      villages: buildVillages(region.id, crop.id),
       signals,
-      risk: runEngine({ regionId: region.id, crop, season, signals }).risk,
-      forecast: buildForecast(region.id),
+      risk: runEngine({
+        regionId: region.id,
+        crop,
+        season,
+        signals,
+      }).risk,
+      forecast: buildForecast(region.id, crop.id),
       quality: this.getDataQuality(),
     };
   }
 
   runScenario(
     regionId: string,
+    cropId: string,
     input: ScenarioInput,
     opts?: { signalCoverage?: number; reportCount?: number },
   ): ScenarioResult | null {
-    if (!this.hasRegion(regionId)) return null;
-    const season = this.getSeason(regionId);
-    const effective: SeasonState = {
-      ...season,
+    if (!this.hasRegion(regionId) || !this.hasCrop(cropId)) return null;
+    const seasonSeed = this.getSeason(regionId, cropId);
+    const season: SeasonState = {
+      ...seasonSeed,
       signalCoverage:
         opts?.signalCoverage !== undefined
-          ? Math.min(92, Math.max(0, opts.signalCoverage))
-          : season.signalCoverage,
+          ? clampNum(opts.signalCoverage, 0, 92)
+          : seasonSeed.signalCoverage,
       reportCount:
         opts?.reportCount !== undefined
           ? Math.max(0, Math.round(opts.reportCount))
-          : season.reportCount,
+          : seasonSeed.reportCount,
     };
     return runEngine({
       regionId,
-      crop: CROPS[0],
-      season: effective,
-      signals: buildSignals(regionId),
+      crop: cropById(cropId),
+      season,
+      signals: buildSignals(regionId, cropId),
       plantingDeltaPct: input.plantingDeltaPct,
       capacityDeltaPct: input.capacityDeltaPct,
     });
   }
 
-  /** Engine-computed baseline risk for one district (cached). */
-  getDistrictRisk(regionId: string): RiskAssessment | null {
-    if (!this.hasRegion(regionId)) return null;
-    const cached = this.districtRiskCache.get(regionId);
+  /** Engine-computed baseline risk for one district × crop (cached). */
+  getDistrictRisk(regionId: string, cropId: string): RiskAssessment | null {
+    if (!this.hasRegion(regionId) || !this.hasCrop(cropId)) return null;
+    const key = `${regionId}:${cropId}`;
+    const cached = this.districtRiskCache.get(key);
     if (cached) return cached;
     const risk = runEngine({
       regionId,
-      crop: CROPS[0],
-      season: this.getSeason(regionId),
+      crop: cropById(cropId),
+      season: this.getSeason(regionId, cropId),
       signals: [],
     }).risk;
-    this.districtRiskCache.set(regionId, risk);
+    this.districtRiskCache.set(key, risk);
     return risk;
   }
 
-  /** All districts with engine-computed baseline risk, hero districts first. */
-  getDistrictRiskRows(): ReturnType<typeof buildDistrictRiskRows> {
-    if (!this.districtRowsCache) {
-      this.districtRowsCache = buildDistrictRiskRows().sort((a, b) => {
-        const ai = REGION_ORDER.indexOf(a.region.id);
-        const bi = REGION_ORDER.indexOf(b.region.id);
-        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      });
-    }
-    return this.districtRowsCache;
+  /** All districts with baseline risk for a crop, hero districts first. */
+  getDistrictRiskRows(cropId: string): ReturnType<typeof buildDistrictRiskRows> {
+    const cached = this.districtRowsCache.get(cropId);
+    if (cached) return cached;
+    const rows = buildDistrictRiskRows(cropId).sort((a, b) => {
+      const ai = REGION_ORDER.indexOf(a.region.id);
+      const bi = REGION_ORDER.indexOf(b.region.id);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    this.districtRowsCache.set(cropId, rows);
+    return rows;
+  }
+
+  /** Baseline risk per crop for one district (cached). */
+  getCropRiskRows(regionId: string): Record<string, number> {
+    const cached = this.cropRowsCache.get(regionId);
+    if (cached) return cached;
+    const rows = buildCropRiskRows(regionId);
+    this.cropRowsCache.set(regionId, rows);
+    return rows;
   }
 
   /**
    * New reports arriving as a stream batch. PURE: returns the merged list,
    * clamped to MAX_STREAM_SIGNALS; caller owns the state.
    */
-  mergeSignals(current: Signal[], regionId: string, n: number): Signal[] {
-    const safeN = Math.min(500, Math.max(1, Math.round(n)));
+  mergeSignals(
+    current: Signal[],
+    regionId: string,
+    cropId: string,
+    n: number,
+  ): Signal[] {
+    const safeN = clampNum(Math.round(n), 1, 500);
     const now = Date.now();
     const region = this.getRegion(regionId);
+    const season = this.getSeason(regionId, cropId);
+    const villages = buildVillages(regionId, cropId);
     const injected: Signal[] = [];
     for (let i = 1; i <= safeN; i++) {
-      const village = region.villages[i % region.villages.length];
+      const node = villages[i % Math.max(1, villages.length)];
       injected.push({
-        id: `${regionId}-inj-${now}-${i}`,
+        id: `${regionId}-${cropId}-inj-${now}-${i}`,
         regionId,
-        cropId: "onion",
+        cropId,
         kind: i % 3 === 0 ? "survey" : "fpo",
-        org: i % 3 === 0 ? "Demo-injected survey batch" : `${village.name} demo-injected report`,
-        village: village.name,
-        areaHa: Math.round(region.areaHa * 0.004),
+        org: i % 3 === 0
+          ? "Demo-injected survey batch"
+          : `${node?.name ?? region.name} demo-injected report`,
+        village: node?.name ?? region.name,
+        areaHa: Math.round(season.plantingAreaHa * 0.004),
         minutesAgo: 0,
         receivedAt: now,
         simulated: true,
@@ -205,14 +242,12 @@ class CropxApi {
   }
 
   /**
-   * Coverage response to `n` injected reports, from the district's seed
-   * coverage. Deterministic and bounded — no cumulative drift.
+   * Coverage response to `n` injected reports, from the district-crop's
+   * seed coverage. Deterministic and bounded — no cumulative drift.
    */
-  coverageAfterInject(regionId: string, n: number): number {
-    const base = this.getSeason(regionId).signalCoverage;
-    const safeN = Math.min(500, Math.max(0, Math.round(n)));
-    // +4pp per 100 reports (bounded to +25pp), saturating at 92 —
-    // deterministic and monotonic, matching real survey coverage response.
+  coverageAfterInject(regionId: string, cropId: string, n: number): number {
+    const base = this.getSeason(regionId, cropId).signalCoverage;
+    const safeN = clampNum(Math.round(n), 0, 500);
     const gain = Math.min(25, safeN * 0.04);
     return Math.min(92, Math.round(base + gain));
   }
@@ -224,12 +259,17 @@ class CropxApi {
 
   getForecast(
     regionId: string,
+    cropId: string,
     opts?: { productionScale?: number; capacityScale?: number },
   ): ForecastPoint[] {
-    return buildForecast(regionId, opts);
+    return buildForecast(regionId, cropId, opts);
   }
 
-  getRecommendation(risk: RiskAssessment, regionName: string): Recommendation {
+  getRecommendation(
+    risk: RiskAssessment,
+    regionName: string,
+    cropName: string,
+  ): Recommendation {
     const gapPct = risk.oversupplyGapPct;
     const priority: Recommendation["priority"] =
       risk.band === "critical" || risk.band === "high"
@@ -239,34 +279,37 @@ class CropxApi {
           : "low";
     return {
       priority,
-      headline:
-        gapPct > 8
-          ? `Concentration risk in onion across ${regionName} — projected arrivals exceed absorption capacity`
-          : "Projected arrivals within market absorption tolerance",
-      reason:
-        gapPct > 8
-          ? `Oversupply gap ≈ ${gapPct.toFixed(0)}% of absorption capacity; historical tolerance ≈ 5%.`
-          : "Arrivals projected to stay within historical absorption tolerance (±5%).",
+      headline: gapPct > 8
+        ? `Concentration risk in ${cropName.toLowerCase()} across ${regionName} — projected arrivals exceed absorption capacity`
+        : `Projected ${cropName.toLowerCase()} arrivals within market absorption tolerance`,
+      reason: gapPct > 8
+        ? `Oversupply gap ≈ ${gapPct.toFixed(0)}% of absorption capacity; historical tolerance ≈ 5%.`
+        : "Arrivals projected to stay within historical absorption tolerance (±5%).",
       audience: gapPct > 8 ? "FPO + buyers" : "all",
-      actions:
-        gapPct > 8
-          ? [
-              "Hold additional onion planting at current area; shift marginal plots to lower-risk crops.",
-              "Stagger harvest windows across member plots to flatten the arrivals curve.",
-              "Pre-book storage capacity before the harvest window opens.",
-            ]
-          : [
-              "Maintain current planting plan.",
-              "Monitor the weekly signal stream for direction changes.",
-            ],
+      actions: gapPct > 8
+        ? [
+            `Hold additional ${cropName.toLowerCase()} planting at current area; shift marginal plots to lower-risk crops.`,
+            "Stagger harvest windows across member plots to flatten the arrivals curve.",
+            "Pre-book storage/procurement capacity before the harvest window opens.",
+          ]
+        : [
+            "Maintain current planting plan.",
+            "Monitor the weekly signal stream for direction changes.",
+          ],
     };
   }
 
   /** Counts surfaced in the honesty strip / sidebar scope note. */
-  getStats(): { districts: number; villages: number; excluded: string[] } {
+  getStats(): {
+    districts: number;
+    villages: number;
+    crops: number;
+    excluded: string[];
+  } {
     return {
       districts: DISTRICT_COUNT,
       villages: VILLAGE_COUNT,
+      crops: CROPS.length,
       excluded: EXCLUDED_DISTRICTS.map((d) => d.name),
     };
   }
