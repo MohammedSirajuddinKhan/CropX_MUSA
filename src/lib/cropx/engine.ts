@@ -7,6 +7,7 @@ import type {
   SeasonState,
   Signal,
 } from "./types";
+import { CROP_INTERNAL } from "./crops";
 
 /**
  * CropX risk engine — transparent stand-in for the XGBoost + SHAP service.
@@ -34,9 +35,6 @@ const CONFIDENCE_BY_LABEL = {
   "medium-high": 58,
   high: 74,
 } as const;
-
-/** Share of production that reaches markets (rest retained / stored on-farm). */
-const ARRIVALS_SHARE = 0.86;
 
 /** Marginal-land elasticity: late-added area yields ~0.78× per hectare. */
 const AREA_ELASTICITY = 0.78;
@@ -111,7 +109,8 @@ export function runEngine(input: EngineInput): ScenarioResult {
   }
   capacity.total = capacity.regular + capacity.storage + capacity.processing;
 
-  const expectedArrivalsT = scenarioProductionT * ARRIVALS_SHARE;
+  const expectedArrivalsT =
+    scenarioProductionT * (CROP_INTERNAL[crop.id]?.arrivalsShare ?? 0.86);
   const oversupplyGapT = Math.max(0, expectedArrivalsT - capacity.total);
   const oversupplyGapPct = (oversupplyGapT / capacity.total) * 100;
   const absorptionUtilizationPct = (expectedArrivalsT / capacity.total) * 100;
@@ -175,7 +174,7 @@ export function runEngine(input: EngineInput): ScenarioResult {
     "glut-pattern",
     "Historical glut pattern",
     (season.weeksToHarvest <= 8 ? 1 : 0.55) * FEATURE_WEIGHTS.historicalGlut * 90,
-    "3 of last 5 seasons oversupplied at this point",
+    CROP_INTERNAL[crop.id]?.historyNote ?? "historical oversupply episodes detected",
   );
   pushDriver(
     "production",

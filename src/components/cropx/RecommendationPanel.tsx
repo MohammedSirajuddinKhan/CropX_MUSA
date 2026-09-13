@@ -11,7 +11,7 @@ import { cropxApi } from "@/lib/cropx/data";
 export function RecommendationPanel() {
   const { scenario, baseline, bundle } = useConsole();
   const risk = scenario.risk;
-  const rec = cropxApi.getRecommendation(risk, bundle.region.name);
+  const rec = cropxApi.getRecommendation(risk, bundle.region.name, bundle.crop.name);
   const changed = scenario.risk.glutRisk !== baseline.risk.glutRisk;
 
   return (

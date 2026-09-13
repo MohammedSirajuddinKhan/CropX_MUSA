@@ -43,7 +43,7 @@ export default function ConsoleSignals() {
         {/* Stream */}
         <Panel
           title="Signal stream"
-          meta={`prototype · simulated FPO/farmer reports · ${bundle.region.name}`}
+          meta={`prototype · simulated FPO/farmer reports · ${bundle.region.name} · ${bundle.crop.name.toLowerCase()}`}
           right={
             <span className="font-mono text-[10px] text-muted-foreground">
               {signalCount.toLocaleString("en-IN")} reports

@@ -4,22 +4,22 @@ import { formatHa } from "@/lib/cropx/format";
 import { cn } from "@/lib/utils";
 
 /**
- * Village / taluka node table for the active district: planting area,
- * deviation vs 5-yr baseline, and stream freshness per node. This is the
- * village-level layer of the data story — what a real deployment would
- * source from FPO block reports and mandi desks.
+ * Village / taluka node table for the active district + crop: planting area,
+ * deviation vs 5-yr baseline, and stream freshness per node. Areas scale
+ * with the selected crop — every district × crop cell has data.
  */
 export function VillageTable() {
   const { bundle } = useConsole();
   const region = bundle.region;
-  const villages = region.villages;
+  const villages = bundle.villages;
+  const cropName = bundle.crop.name.toLowerCase();
 
   if (!villages.length) return null;
 
   return (
     <Panel
       title="Village / taluka nodes"
-      meta={`${villages.length} monitored nodes · ${region.name} district`}
+      meta={`${villages.length} monitored nodes · ${region.name} · ${cropName}`}
     >
       <table className="w-full border-collapse">
         <thead>

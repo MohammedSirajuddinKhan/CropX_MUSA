@@ -46,7 +46,7 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
  * district risk grid, a sortable district table, and the coverage strip.
  */
 export default function ConsoleMonitor() {
-  const { bundle, scenario, baseline, districtRows, setRegion } = useConsole();
+  const { bundle, scenario, baseline, districtRows, setRegion, crop } = useConsole();
 
   // Chart reacts to the active scenario: production scales the forecast line,
   // absorption shift scales the capacity line. History stays untouched.
@@ -79,7 +79,7 @@ export default function ConsoleMonitor() {
       {/* Forecast chart with uncertainty band */}
       <Panel
         title="Arrivals forecast"
-        meta={`${bundle.region.name} · weekly tonnes · uncertainty band = confidence interval`}
+        meta={`${bundle.region.name} · ${crop.name.toLowerCase()} · weekly tonnes · uncertainty band = confidence interval`}
         right={
           scenario.risk.glutRisk !== baseline.risk.glutRisk ? (
             <span className="font-mono text-[10px] text-muted-foreground">
@@ -181,7 +181,10 @@ export default function ConsoleMonitor() {
       <DistrictRiskGrid />
 
       {/* District risk table — all districts, sortable by risk (pre-sorted) */}
-      <Panel title="District risk table" meta={`onion · baseline · ${rows.length} districts`}>
+      <Panel
+        title="District risk table"
+        meta={`${crop.name.toLowerCase()} · baseline · ${rows.length} districts`}
+      >
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

@@ -8,6 +8,7 @@ import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 import { VillageTable } from "@/components/cropx/VillageTable";
 import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
+import { CropProvenance } from "@/components/cropx/CropProvenance";
 
 /**
  * Main console screen — the Scenario Simulator is the product.
@@ -34,6 +35,8 @@ export default function ConsoleSimulator() {
         <VillageTable />
         <DistrictRiskGrid compact />
       </div>
+
+      <CropProvenance />
 
       <div className="grid gap-3 xl:grid-cols-2">
         <PlantingSignals />

@@ -64,9 +64,8 @@ export function AppSidebar() {
         <div className="mt-4 px-4">
           <p className="font-mono-t">v1 scope</p>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Onion across 34 Maharashtra farming districts + taluka nodes.
-            Scenario simulator for FPOs — additional crops ship with the ML
-            backend.
+            15 vegetables × 34 Maharashtra farming districts, anchored to
+            GoI/NHB horticulture statistics. Scenario simulator for FPOs.
           </p>
         </div>
       </nav>
