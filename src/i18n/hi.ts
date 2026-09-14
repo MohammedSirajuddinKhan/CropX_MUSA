@@ -56,6 +56,7 @@ export const hi: Partial<Dict> = {
     "15 सब्ज़ियाँ × 34 महाराष्ट्र कृषि ज़िले, GoI/NHB बागवानी सांख्यिकी पर आधारित। FPO हेतु परिदृश्य सिम्युलेटर।",
   "nav.engineOnline": "इंजन ऑनलाइन",
   "nav.dataStream": "डेटा सिम-स्ट्रीम",
+  "nav.liveSync": "लाइव डेटा",
   "nav.exit": "बाहर",
   "top.region": "क्षेत्र",
   "top.crop": "फसल",

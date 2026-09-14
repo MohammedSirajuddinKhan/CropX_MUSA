@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { DATA_REFRESHED_EVENT } from "./LiveRefresh";
 import { useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cropxApi, MAX_STREAM_SIGNALS } from "@/lib/cropx/data";
@@ -123,7 +124,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   useEffect(() => {
     let cancelled = false;
-    convex
+    const load = () => {
+      convex
       .query(api.openmeteo.snapshot, { regionId })
       .then((snap: unknown) => {
         if (cancelled || !snap) return;
@@ -141,8 +143,14 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         /* offline → static driver fallback */
       });
+    };
+    void load();
+    // When LiveRefresh completes a pass, re-read the snapshot so the
+    // engine's weather driver and the readouts reflect the fresh data.
+    window.addEventListener(DATA_REFRESHED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(DATA_REFRESHED_EVENT, load);
     };
   }, [convex, regionId]);
 

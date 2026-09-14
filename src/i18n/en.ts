@@ -57,6 +57,7 @@ export const en = {
     "15 vegetables × 34 Maharashtra farming districts, anchored to GoI/NHB horticulture statistics. Scenario simulator for FPOs.",
   "nav.engineOnline": "engine online",
   "nav.dataStream": "data sim-stream",
+  "nav.liveSync": "live data",
   "nav.exit": "exit",
   "top.region": "region",
   "top.crop": "crop",

@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useLang } from "@/i18n";
 import { ThemeToggle, LanguageToggle } from "@/components/cropx/Controls";
+import { DATA_REFRESHED_EVENT } from "@/components/cropx/LiveRefresh";
 import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
 
@@ -14,7 +16,15 @@ const NAV = [
 export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+
+  // "Live data synced HH:MM" — updates when LiveRefresh completes a pass.
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  useEffect(() => {
+    const mark = () => setSyncedAt(Date.now());
+    window.addEventListener(DATA_REFRESHED_EVENT, mark);
+    return () => window.removeEventListener(DATA_REFRESHED_EVENT, mark);
+  }, []);
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -86,8 +96,19 @@ export function AppSidebar() {
           </span>
           <span>v1.0</span>
         </div>
-        <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-          <span>{t("nav.dataStream")}</span>
+        <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block size-1.5 bg-fresh" aria-hidden />
+            {t("nav.liveSync")}
+            {syncedAt && (
+              <span className="tabular-nums">
+                {new Date(syncedAt).toLocaleTimeString(
+                  lang === "hi" ? "hi-IN" : lang === "mr" ? "mr-IN" : "en-IN",
+                  { hour: "2-digit", minute: "2-digit" },
+                )}
+              </span>
+            )}
+          </span>
           <button
             type="button"
             onClick={() => void signOut()}
