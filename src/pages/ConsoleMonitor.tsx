@@ -14,6 +14,10 @@ import { StatusTag } from "@/components/cropx/StatusTag";
 import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
+import { CompareTable } from "@/components/cropx/CompareTable";
+import { MandiPrices } from "@/components/cropx/MandiPrices";
+import { WeatherPanel } from "@/components/cropx/WeatherPanel";
+import { CropProvenance } from "@/components/cropx/CropProvenance";
 import { useLang } from "@/i18n";
 import { cropName, districtName } from "@/i18n/names";
 import { bandLabelT } from "@/components/cropx/labels";
@@ -46,8 +50,9 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
 }
 
 /**
- * Risk Monitor — state-wide view: forecast split (scenario-aware), the full
- * district risk grid, a sortable district table, and the coverage strip.
+ * Risk Monitor — the full data picture, one page:
+ * forecast split (scenario-aware) → all-district grid + table → digital
+ * twin (baseline → scenario) → LIVE mandi + weather feeds → provenance.
  */
 export default function ConsoleMonitor() {
   const { bundle, scenario, baseline, districtRows, setRegion, crop } = useConsole();
@@ -185,6 +190,18 @@ export default function ConsoleMonitor() {
 
       {/* Full district risk grid */}
       <DistrictRiskGrid />
+
+      {/* Digital twin (baseline → scenario) + live data feeds */}
+      <div className="grid gap-3 xl:grid-cols-2">
+        <CompareTable />
+        <div className="grid gap-3 content-start">
+          <MandiPrices />
+          <WeatherPanel />
+        </div>
+      </div>
+
+      {/* Where this crop's numbers come from (official/derived citations) */}
+      <CropProvenance />
 
       {/* District risk table — all districts, sortable by risk (pre-sorted) */}
       <Panel

@@ -3,6 +3,9 @@ import { action, internalMutation, internalQuery, query } from "./_generated/ser
 import { internal } from "./_generated/api";
 import { DISTRICTS } from "../lib/cropx/districts";
 
+/** Refresh-on-open window: a successful ingest blocks re-runs for 10 min. */
+const COOLDOWN_MS = 10 * 60_000;
+
 /**
  * Open-Meteo ingest — pulls REAL observed + forecast weather for every
  * monitored district from the free Open-Meteo API (no API key needed).
@@ -62,13 +65,22 @@ function wetnessIndex(rainPast30dMm: number, rainNext14dMm: number): number {
 }
 
 export const ingest = action({
-  args: {},
+  // `force` bypasses the 10-minute cooldown (used by the app's refresh-on-open
+  // path only when the cached data is stale; the cron passes force: false).
+  args: { force: v.optional(v.boolean()) },
   returns: v.object({
     status: v.union(v.literal("ok"), v.literal("error")),
     recordCount: v.number(),
     message: v.optional(v.string()),
   }),
-  handler: async (ctx): Promise<{ status: "ok" | "error"; recordCount: number; message?: string }> => {
+  handler: async (ctx, args): Promise<{ status: "ok" | "error"; recordCount: number; message?: string }> => {
+    // Cooldown: only successful runs hold the 10-minute window — a failed
+    // run can be retried immediately. Keeps refresh-on-open polite.
+    const last = await ctx.runQuery(internal.openmeteo.lastSync, {});
+    if (!args.force && last.status === "ok" && Date.now() - last.at < COOLDOWN_MS) {
+      return { status: "ok", recordCount: -1, message: "cooldown: last successful run < 10 min ago" };
+    }
+
     const errors: string[] = [];
     let stored = 0;
     const now = Date.now();
