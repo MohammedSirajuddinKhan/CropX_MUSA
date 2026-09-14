@@ -12,7 +12,8 @@ import { EXCLUDED_DISTRICTS } from "@/lib/cropx/dataset";
 /**
  * District risk grid — every monitored district as a selectable cell, tinted
  * by baseline glut-risk band with the score printed in text (risk is never
- * color-alone). Splits Maharashtra into its four recognized divisions.
+ * color-alone). Splits Maharashtra into its recognized divisions. Clicking a
+ * cell selects that district everywhere in the console.
  */
 
 type Cell = { id: string; name: string; risk: number; band: string };
@@ -33,7 +34,7 @@ function bandTone(risk: number): { cell: string; text: string } {
 }
 
 export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
-  const { districtRows, bundle, setRegion, crop } = useConsole();
+  const { districtRows, bundle, setRegion } = useConsole();
   const { t, lang } = useLang();
 
   const byId = useMemo(() => {
@@ -56,12 +57,6 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
         n: districtRows.length,
         crop: cropName(bundle.crop.id, lang),
       })}
-      right={
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {EXCLUDED_DISTRICTS.map((d) => d.name).join(" · ")} — {t("grid.notMonitored")}
-        </span>
-      }
-      className={compact ? "" : undefined}
     >
       <div className="flex flex-col gap-3">
         {DIVISIONS.map((div) => {
@@ -109,6 +104,9 @@ export function DistrictRiskGrid({ compact = false }: { compact?: boolean }) {
             </div>
           );
         })}
+        <p className="border-t border-border/60 pt-2 font-mono text-[10px] text-muted-foreground">
+          {EXCLUDED_DISTRICTS.map((d) => d.name).join(" · ")} — {t("grid.notMonitored")}
+        </p>
       </div>
     </Panel>
   );

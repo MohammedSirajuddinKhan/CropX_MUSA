@@ -9,14 +9,12 @@ import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 /**
  * Main console screen — ONE decision flow, nothing else:
  *   current risk → why (drivers) → what to do (recommendation + brief),
- * with the scenario simulator as the interactive core. Supporting detail
- * lives where it belongs: signals on the Signals page, district/village/
- * live-feed detail on the Monitor page. The thin coverage strip stays —
- * data honesty is part of the risk read.
+ * with the scenario simulator as the interactive core. The thin coverage
+ * strip stays — data honesty is part of the risk read.
  */
 export default function ConsoleSimulator() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <RegionSwitcher />
 
       <RiskHeader />
@@ -24,7 +22,7 @@ export default function ConsoleSimulator() {
       <ScenarioSimulator />
 
       {/* WHY it is happening + WHAT to do about it */}
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <RiskDrivers />
         <RecommendationPanel />
       </div>
