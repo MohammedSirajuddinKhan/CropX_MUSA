@@ -10,7 +10,6 @@ import {
 } from "recharts";
 import { useConsole } from "@/components/cropx/console-state";
 import { Panel } from "@/components/cropx/Panel";
-import { StatusTag } from "@/components/cropx/StatusTag";
 import { DataCoverage } from "@/components/cropx/DataCoverage";
 import { RegionSwitcher } from "@/components/cropx/RegionSwitcher";
 import { DistrictRiskGrid } from "@/components/cropx/DistrictRiskGrid";
@@ -20,9 +19,6 @@ import { WeatherPanel } from "@/components/cropx/WeatherPanel";
 import { CropProvenance } from "@/components/cropx/CropProvenance";
 import { useLang } from "@/i18n";
 import { cropName, districtName } from "@/i18n/names";
-import { bandLabelT } from "@/components/cropx/labels";
-import { formatHa } from "@/lib/cropx/format";
-import { cn } from "@/lib/utils";
 
 function ForecastTooltip({ active, payload, label }: TooltipProps<number, string>) {
   const { t } = useLang();
@@ -50,12 +46,14 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
 }
 
 /**
- * Risk Monitor — the full data picture, one page:
- * forecast split (scenario-aware) → all-district grid + table → digital
- * twin (baseline → scenario) → LIVE mandi + weather feeds → provenance.
+ * Risk Monitor — the full data picture, kept scannable:
+ * forecast split (scenario-aware) → all-district grid (click a cell to
+ * inspect that district; per-district planting/gap/coverage detail lives in
+ * the Risk header once selected) → digital twin (baseline → scenario) →
+ * LIVE mandi + weather feeds → provenance + data-honesty strip.
  */
 export default function ConsoleMonitor() {
-  const { bundle, scenario, baseline, districtRows, setRegion, crop } = useConsole();
+  const { bundle, scenario, baseline, crop } = useConsole();
   const { t, lang } = useLang();
 
   // Chart reacts to the active scenario: production scales the forecast line,
@@ -80,10 +78,8 @@ export default function ConsoleMonitor() {
     absorption: p.absorptionT != null ? Math.round(p.absorptionT * cScale) : null,
   }));
 
-  const rows = [...districtRows].sort((a, b) => b.risk.glutRisk - a.risk.glutRisk);
-
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <RegionSwitcher />
 
       {/* Forecast chart with uncertainty band */}
@@ -188,13 +184,13 @@ export default function ConsoleMonitor() {
         </div>
       </Panel>
 
-      {/* Full district risk grid */}
+      {/* All-district risk grid (selectable; replaces the old long table) */}
       <DistrictRiskGrid />
 
       {/* Digital twin (baseline → scenario) + live data feeds */}
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <CompareTable />
-        <div className="grid gap-3 content-start">
+        <div className="grid content-start gap-4">
           <MandiPrices />
           <WeatherPanel />
         </div>
@@ -202,63 +198,6 @@ export default function ConsoleMonitor() {
 
       {/* Where this crop's numbers come from (official/derived citations) */}
       <CropProvenance />
-
-      {/* District risk table — all districts, sortable by risk (pre-sorted) */}
-      <Panel
-        title={t("mon.tableTitle")}
-        meta={t("mon.tableMeta", { crop: cropName(crop.id, lang), n: rows.length })}
-      >
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border text-left font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              <th className="py-1.5 pr-2 font-medium">{t("mon.colDistrict")}</th>
-              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colGlutRisk")}</th>
-              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colBand")}</th>
-              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colPlanting")}</th>
-              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colGap")}</th>
-              <th className="py-1.5 px-2 text-right font-medium">{t("mon.colReports")}</th>
-              <th className="py-1.5 pl-2 text-right font-medium">{t("mon.colCoverage")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ region, risk, season }) => {
-              const active = region.id === bundle.region.id;
-              return (
-                <tr
-                  key={region.id}
-                  onClick={() => setRegion(region.id)}
-                  className={cn(
-                    "cursor-pointer border-b border-border/60 last:border-b-0 transition-colors hover:bg-secondary/50",
-                    active && "bg-secondary/70",
-                  )}
-                >
-                  <td className="py-1.5 pr-2 text-[12.5px] font-medium text-foreground">
-                    {districtName(region.id, lang)}
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[12.5px] font-semibold tabular-nums text-foreground">
-                    {risk.glutRisk}%
-                  </td>
-                  <td className="py-1.5 px-2 text-right">
-                    <StatusTag band={risk.band} label={bandLabelT(t, risk.band)} />
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                    {formatHa(season.plantingAreaHa)}
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                    {Math.round(risk.oversupplyGapPct)}%
-                  </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                    {season.reportCount.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-1.5 pl-2 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
-                    {season.signalCoverage}%
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Panel>
 
       <DataCoverage />
     </div>
