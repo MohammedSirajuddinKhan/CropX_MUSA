@@ -335,6 +335,8 @@ export const en = {
   "auth.verifyCode": "Verify code",
   "auth.differentEmail": "Use different email",
   "auth.securedBy": "Secured by",
+  "auth.clerkSecured": "Identity and sessions handled by Clerk",
+  "nav.clerkSession": "clerk session",
 } as const;
 
 /** Translation keys — the single union every dictionary must draw from. */

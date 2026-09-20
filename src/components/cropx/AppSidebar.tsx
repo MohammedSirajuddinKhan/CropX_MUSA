@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useLang } from "@/i18n";
 import { ThemeToggle, LanguageToggle } from "@/components/cropx/Controls";
 import { DATA_REFRESHED_EVENT } from "@/components/cropx/LiveRefresh";
+import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
+
+/** Clerk-only UI, code-split so it never loads in the default build. */
+const ClerkIdentity = lazy(
+  () => import("@/components/cropx/ClerkSignInPanel").then((m) => ({ default: m.ClerkIdentity })),
+);
 
 const NAV = [
   { to: "/console", labelKey: "nav.simulator", key: "sim", primary: true },
@@ -56,8 +62,7 @@ export function AppSidebar() {
                   to={item.to}
                   className={cn(
                     "flex items-center justify-between px-4 py-2 text-[13px] transition-colors hover:bg-sidebar-accent",
-                    active &&
-                      "bg-sidebar-accent font-medium text-foreground",
+                    active && "bg-sidebar-accent font-medium text-foreground",
                   )}
                 >
                   <span className={active ? "" : "text-secondary-foreground"}>
@@ -89,6 +94,19 @@ export function AppSidebar() {
 
       {/* System status */}
       <div className="border-t border-border px-4 py-3">
+        {CLERK_ENABLED && (
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+            <Suspense fallback={null}>
+              <ClerkIdentity />
+            </Suspense>
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-fresh">
+              {t("nav.clerkSession")}
+            </span>
+            <Suspense fallback={null}>
+              <ClerkUserButtonBox />
+            </Suspense>
+          </div>
+        )}
         <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="inline-block size-1.5 rounded-full bg-fresh" />
@@ -96,7 +114,7 @@ export function AppSidebar() {
           </span>
           <span>v1.0</span>
         </div>
-        <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+        <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="inline-block size-1.5 bg-fresh" aria-hidden />
             {t("nav.liveSync")}
@@ -122,3 +140,16 @@ export function AppSidebar() {
     </aside>
   );
 }
+
+/** Clerk <UserButton /> in a Suspense boundary (Clerk build only). */
+function ClerkUserButtonBox() {
+  return (
+    <Suspense fallback={null}>
+      <ClerkUserButtonLazy />
+    </Suspense>
+  );
+}
+
+const ClerkUserButtonLazy = lazy(() =>
+  import("@clerk/clerk-react").then((m) => ({ default: m.UserButton })),
+);
