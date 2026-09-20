@@ -310,4 +310,6 @@ export const mr: Partial<Dict> = {
   "auth.verifyCode": "कोड तपासा",
   "auth.differentEmail": "दुसरा ईमेल वापरा",
   "auth.securedBy": "सुरक्षा",
+  "auth.clerkSecured": "ओळख आणि सत्रे Clerk कडून हाताळली जातात",
+  "nav.clerkSession": "क्लर्क सत्र",
 };

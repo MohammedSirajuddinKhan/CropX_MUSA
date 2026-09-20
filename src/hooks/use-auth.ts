@@ -1,20 +1,37 @@
-import { api } from "@/convex/_generated/api";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { CLERK_ENABLED } from "@/lib/clerk-config";
+import { useAuth as useAuthClerk } from "./use-auth-clerk";
+import { useAuth as useAuthConvex } from "./use-auth-convex";
 
-export function useAuth() {
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
-  const user = useQuery(api.users.currentUser);
-  const { signIn, signOut } = useAuthActions();
+export type CropxUser =
+  | {
+      name?: string;
+      email?: string;
+      isAnonymous?: boolean;
+    }
+  | null
+  | undefined; // undefined while the user profile query is in flight
 
-  // Derive isLoading directly from the dependencies instead of managing separate state
-  const isLoading = isAuthLoading || user === undefined;
-
-  return {
-    isLoading,
-    isAuthenticated,
-    user,
-    signIn,
-    signOut,
-  };
+export interface AuthApi {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  user: CropxUser;
+  /**
+   * Convex-Auth build only (email-OTP page). In the Clerk build this throws
+   * if called — the Clerk <SignIn /> panel replaces those forms entirely.
+   */
+  signIn: (provider: string, formData: FormData) => Promise<unknown>;
+  signOut: () => Promise<void>;
 }
+
+/**
+ * Build-time-selected auth implementation.
+ *
+ * With a Clerk publishable key (pk_test_* / pk_live_*) configured, the Clerk
+ * implementation is used: Clerk owns session identity and the Convex client
+ * authenticates through the Clerk JWT template. Without a key, the built-in
+ * Convex Auth email-OTP flow is used — identical call sites either way.
+ *
+ * Both modules are imported statically; only the selected hook is ever
+ * CALLED, so provider-specific hooks never run in the wrong context.
+ */
+export const useAuth: () => AuthApi = CLERK_ENABLED ? useAuthClerk : useAuthConvex;
