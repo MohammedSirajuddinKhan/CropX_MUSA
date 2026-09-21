@@ -309,7 +309,6 @@ export const hi: Partial<Dict> = {
   "auth.verifying": "सत्यापित हो रहा है...",
   "auth.verifyCode": "कोड सत्यापित करें",
   "auth.differentEmail": "दूसरा ईमेल उपयोग करें",
-  "auth.securedBy": "सुरक्षा प्रदाता",
   "auth.clerkSecured": "पहचान और सत्र Clerk द्वारा संभाले जाते हैं",
   "nav.clerkSession": "क्लर्क सत्र",
 

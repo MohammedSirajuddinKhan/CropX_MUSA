@@ -342,7 +342,6 @@ export const en = {
   "auth.verifying": "Verifying...",
   "auth.verifyCode": "Verify code",
   "auth.differentEmail": "Use different email",
-  // "auth.securedBy": "Secured by",
   "auth.clerkSecured": "Identity and sessions handled by Clerk",
   "nav.clerkSession": "clerk session",
 } as const;

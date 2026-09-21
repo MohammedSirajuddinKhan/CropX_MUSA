@@ -18,7 +18,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLang } from "@/i18n";
 import { ThemeToggle, LanguageToggle } from "@/components/cropx/Controls";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
-import logo from "@/assets/logo.svg";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -136,20 +135,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           </div>
         ) : (
           <div className="flex items-center justify-center h-full flex-col">
-            <Card className="min-w-[350px] pb-0 border shadow-md">
+            <Card className="min-w-[350px] border shadow-md">
               {step === "signIn" ? (
                 <>
-                  <CardHeader className="text-center">
-                    <div className="flex justify-center">
-                      <img
-                        src={logo}
-                        alt="CropX"
-                        width={64}
-                        height={64}
-                        className="rounded-lg mb-4 mt-4 cursor-pointer"
-                        onClick={() => navigate("/")}
-                      />
-                    </div>
+                  <CardHeader className="text-center pt-6">
                     <CardTitle className="text-xl">
                       {t("auth.getStarted")}
                     </CardTitle>
@@ -299,17 +288,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 </>
               )}
 
-              <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
-                {t("auth.securedBy")}{" "}
-                <a
-                  // href="https://freebuff.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-primary transition-colors"
-                >
-                
-                </a>
-              </div>
             </Card>
           </div>
         )}
