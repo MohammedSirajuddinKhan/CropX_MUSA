@@ -5,6 +5,7 @@ import { useLang } from "@/i18n";
 import { ThemeToggle, LanguageToggle } from "@/components/cropx/Controls";
 import { DATA_REFRESHED_EVENT } from "@/components/cropx/LiveRefresh";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
+import { VERCEL_DEPLOY_LABEL, VERCEL_ENV, VERCEL_GIT_COMMIT_SHA, VERCEL_REGION, VERCEL_ENV_LABEL } from "@/lib/vercel-config";
 import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
 
@@ -114,6 +115,21 @@ export function AppSidebar() {
           </span>
           <span>v1.0</span>
         </div>
+        {/* Deploy status — Vercel-injected build metadata (absent when self-hosted) */}
+        {VERCEL_DEPLOY_LABEL && (
+          <div
+            className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground"
+            title={`${t("infra.commit", { sha: VERCEL_GIT_COMMIT_SHA.slice(0, 7) })}${VERCEL_REGION ? ` · ${t("infra.region", { region: VERCEL_REGION })}` : ""}`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block size-1.5 bg-fresh" aria-hidden />
+              {t("infra.deploy")} · {VERCEL_ENV_LABEL[VERCEL_ENV] ?? (VERCEL_ENV || "—")}
+            </span>
+            <span className="max-w-[92px] truncate" title={VERCEL_DEPLOY_LABEL}>
+              {VERCEL_DEPLOY_LABEL}
+            </span>
+          </div>
+        )}
         <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="inline-block size-1.5 bg-fresh" aria-hidden />

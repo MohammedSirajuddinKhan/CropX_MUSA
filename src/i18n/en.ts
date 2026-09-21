@@ -312,6 +312,14 @@ export const en = {
   "mandi.syncFail": "sync failed — check DATA_GOV_IN_API_KEY and retry",
   "switcher.allDistricts": "all {n} districts",
 
+  // --- deployment / infra status ---
+  "infra.deploy": "deploy",
+  "infra.vercel": "Vercel",
+  "infra.hostedOn": "hosted on Vercel",
+  "infra.commit": "commit {sha}",
+  "infra.region": "edge region {region}",
+  "infra.notDetected": "self-hosted",
+
   // --- bands, sources ---
   "band.low": "low",
   "band.medium": "medium",

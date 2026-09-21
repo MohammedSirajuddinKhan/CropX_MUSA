@@ -312,4 +312,12 @@ export const hi: Partial<Dict> = {
   "auth.securedBy": "सुरक्षा प्रदाता",
   "auth.clerkSecured": "पहचान और सत्र Clerk द्वारा संभाले जाते हैं",
   "nav.clerkSession": "क्लर्क सत्र",
+
+  // --- deployment / infra status ---
+  "infra.deploy": "डिप्लॉय",
+  "infra.vercel": "Vercel",
+  "infra.hostedOn": "Vercel पर होस्टेड",
+  "infra.commit": "कमिट {sha}",
+  "infra.region": "एज क्षेत्र {region}",
+  "infra.notDetected": "स्व-होस्टेड",
 };

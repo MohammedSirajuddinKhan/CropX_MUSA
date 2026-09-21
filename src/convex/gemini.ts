@@ -17,6 +17,63 @@ import { internal } from "./_generated/api";
 const MODEL = "gemini-2.0-flash";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
+/**
+ * Vercel AI Gateway — when AI_GATEWAY_API_KEY is configured the LLM call is
+ * routed through Vercel's managed gateway (OpenAI-compatible endpoint, zero
+ * markup on token prices, request logging + budgets in the Vercel dashboard).
+ * Without the key the brief action talks to Google directly, exactly as before.
+ */
+const GATEWAY_ENDPOINT = "https://ai-gateway.vercel.sh/v1/chat/completions";
+const GATEWAY_MODEL = `google/${MODEL}`;
+const GATEWAY_TIMEOUT_MS = 25_000;
+
+/** The LLM text response, or null when the call failed for any reason. */
+async function callLlm(prompt: string, apiKey: string): Promise<string | null> {
+  if (process.env.AI_GATEWAY_API_KEY) {
+    // Vercel AI Gateway: OpenAI-compatible chat completions.
+    const res = await fetch(GATEWAY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
+        "Content-Type": "application/json",
+        "http-referer": "https://cropx.app",
+        "x-title": "CropX",
+      },
+      body: JSON.stringify({
+        model: GATEWAY_MODEL,
+        messages: [
+          { role: "system", content: "You write decision briefs for an agricultural risk console. Always reply with valid minified JSON only." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+      }),
+      signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`AI Gateway HTTP ${res.status}`);
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return json.choices?.[0]?.message?.content ?? null;
+  }
+
+  // Direct Google Gemini endpoint (unchanged default path).
+  const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? null;
+}
+
 interface BriefPayload {
   headline: string;
   body: string;
@@ -149,14 +206,17 @@ export const brief = action({
     }
 
     // 2. No key configured → deterministic template brief (no LLM call).
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    //    Either the Google key or the Vercel AI Gateway key enables briefs.
+    const apiKey = process.env.GEMINI_API_KEY ?? "";
+    const gatewayKey = process.env.AI_GATEWAY_API_KEY ?? "";
+    if (!apiKey && !gatewayKey) {
       const tpl = templateBrief(args);
       await store(ctx, args, tpl, "template");
       return { ...tpl, model: "template", generatedAt: Date.now(), cached: false };
     }
 
-    // 3. Gemini call with a strictly scoped prompt.
+    // 3. LLM call (Vercel AI Gateway when configured, else Gemini direct)
+    //    with a strictly scoped prompt.
     const langName = args.lang === "hi" ? "Hindi" : args.lang === "mr" ? "Marathi" : "English";
     const prompt = [
       `You are writing a decision brief for an agricultural risk console (CropX).`,
@@ -179,20 +239,7 @@ export const brief = action({
     ].join("\n");
 
     try {
-      const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
-        }),
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      const text = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      const text = (await callLlm(prompt, apiKey)) ?? "";
       const parsed = parseBrief(text);
       if (
         !parsed ||
@@ -211,7 +258,8 @@ export const brief = action({
     } catch (e) {
       // Network/quota failure → template fallback, honestly labeled.
       const reason = e instanceof Error ? e.message : String(e);
-      const tpl = templateBrief(args, `Gemini unavailable (${reason}); deterministic brief shown.`);
+      const provider = process.env.AI_GATEWAY_API_KEY ? "AI gateway" : "Gemini";
+      const tpl = templateBrief(args, `${provider} unavailable (${reason}); deterministic brief shown.`);
       await store(ctx, args, tpl, "template");
       return { ...tpl, model: "template", generatedAt: Date.now(), cached: false };
     }
