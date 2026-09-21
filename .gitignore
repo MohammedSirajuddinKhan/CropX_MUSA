@@ -1,4 +1,8 @@
 .env.local
 node_modules
 dist
-src/convex/_generated
+# src/convex/_generated is committed: Vercel's build sandbox has no Convex
+# deployment config, and codegen there errors out (dev deployment exists locally).
+# To un-ignore locally, run: git add -f src/convex/_generated
+.vercel
+.env*
